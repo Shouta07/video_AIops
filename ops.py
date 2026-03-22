@@ -376,6 +376,33 @@ def menu_buzz():
             pause()
 
 
+# ─── メニュー 7: 台本作成 ───
+
+def menu_script():
+    clear()
+    header()
+    client_id = select_client()
+    if not client_id:
+        return
+
+    from scripts.script import STYLES
+
+    # スタイル選択
+    style_options = [(f"{s['name']}（{s['duration']}秒）— {s['description']}", sid) for sid, s in STYLES.items()]
+    style_id = menu_select("台本スタイルを選択:", style_options)
+    if not style_id:
+        return
+
+    theme = input("\n  テーマを入力（例: 眉毛の描き方）: ").strip()
+    if not theme:
+        return
+
+    cmd = [sys.executable, "scripts/script.py",
+           "--theme", theme, "--style", style_id, "--client", client_id]
+    subprocess.run(cmd)
+    pause()
+
+
 # ─── メインメニュー ───
 
 def main():
@@ -384,6 +411,7 @@ def main():
         header()
         action = menu_select("メインメニュー", [
             ("クイック実行（素材 → 投稿プラン → 動画生成）", "quick"),
+            ("台本を作成（テーマ入力 → 台本生成）", "script"),
             ("バズ動画の型（URL分析 / 型で投稿生成）", "buzz"),
             ("投稿プラン（確認・修正・再生成）", "plan"),
             ("撮影指示書を作成", "brief"),
@@ -396,6 +424,8 @@ def main():
             break
         elif action == "quick":
             menu_quick()
+        elif action == "script":
+            menu_script()
         elif action == "buzz":
             menu_buzz()
         elif action == "plan":
