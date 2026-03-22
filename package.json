@@ -8,7 +8,8 @@
     "build": "vite build",
     "start": "node server.js",
     "studio": "npx remotion studio remotion/index.ts",
-    "render": "node render.mjs"
+    "render": "node render.mjs",
+    "pipeline": "python scripts/pipeline.py"
   },
   "dependencies": {
     "@remotion/bundler": "^4.0.438",
