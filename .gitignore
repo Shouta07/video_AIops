@@ -1,0 +1,19 @@
+# 素材・出力ファイル
+input/
+output/
+reports/
+clients/
+captions/
+
+# アカウント情報
+account.md
+
+# 動画ファイル
+*.mp4
+*.mov
+*.MP4
+*.MOV
+
+# OS
+.DS_Store
+Thumbs.db
