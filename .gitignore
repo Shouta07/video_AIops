@@ -2,7 +2,10 @@
 input/
 output/
 reports/
-clients/
+clients/*/input/
+clients/*/output/
+clients/*/reports/
+clients/*/templates/
 captions/
 
 # アカウント情報

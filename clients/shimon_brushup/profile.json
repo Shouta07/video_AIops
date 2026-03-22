@@ -1,0 +1,18 @@
+{
+  "name": "Shimon",
+  "genre": "beauty",
+  "brand": {
+    "tone": "タメ口ベース。初心者目線。一緒にやる感じ。上から教えない",
+    "telop_color_main": "white",
+    "telop_color_accent": "yellow",
+    "telop_color_cta": "#FFB6C1",
+    "font_size": 56
+  },
+  "hashtags_fixed": ["#メンズメイク", "#メンズ美容", "#自分磨き", "#垢抜け"],
+  "hashtags_ng": [],
+  "caption_rules": "タメ口。共感から入る。絵文字控えめ。「一緒にやろう」系の仲間意識",
+  "ng_words": ["最強", "神", "激安", "モテる"],
+  "target_audience": "18〜25歳男性。髪型・服には気を使い始めたがメイクは未経験。何から始めればいいかわからない層",
+  "posting_frequency": "週3回",
+  "notes": "Shimonの本質は「変身が好き」。プロじゃない初心者が変わっていく過程をリアルタイムで見せる。登竜門的存在を目指す"
+}
