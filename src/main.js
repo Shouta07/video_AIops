@@ -1,7 +1,6 @@
 import { upload } from "@vercel/blob/client";
 import { generateConcepts, PLATFORM_SPECS } from "./concepts.js";
 import { GENRES, buildConceptFromPattern, adjustPatternByReference } from "./patterns.js";
-import { editVideo } from "./editor.js";
 import "./style.css";
 
 // ── DOM Elements ──
@@ -1060,15 +1059,17 @@ function addSubtitleRow(text, start, end, position) {
   subtitleList.appendChild(row);
 }
 
-// Export
+// Export via Cloudinary API
 btnExport.addEventListener("click", async () => {
   if (!editorConcept) return;
 
   btnExport.disabled = true;
   exportProgress.style.display = "block";
   downloadBlock.style.display = "none";
-  exportBar.style.width = "0%";
-  exportStatus.textContent = "FFmpeg を読み込み中...";
+  exportBar.style.width = "10%";
+  exportBar.classList.remove("bar-done");
+  exportBar.style.background = "";
+  exportStatus.textContent = "サーバーで動画を処理中...";
 
   // Gather subtitles
   const subtitles = [];
@@ -1086,36 +1087,46 @@ btnExport.addEventListener("click", async () => {
   const platformSpec = PLATFORM_SPECS[editorConcept.platformId];
   const firstMaterial = editorConcept.materials[0];
 
+  // Animated progress bar
+  exportBar.style.width = "30%";
+  const progressTimer = setInterval(() => {
+    const w = parseFloat(exportBar.style.width);
+    if (w < 85) exportBar.style.width = w + 3 + "%";
+  }, 800);
+
   try {
-    const blob = await editVideo({
-      videoUrl: firstMaterial.url,
-      filename: firstMaterial.name,
-      platform: platformSpec.resolution,
-      startTime: parseFloat(trimStart.value) || 0,
-      endTime: parseFloat(trimEnd.value) || null,
-      subtitles,
-      onProgress: ({ message, progress }) => {
-        if (progress !== null) {
-          const pct = Math.round(progress * 100);
-          exportBar.style.width = pct + "%";
-          exportStatus.textContent = `処理中... ${pct}%`;
-        }
-        if (message) {
-          exportStatus.textContent = message;
-        }
-      },
+    const res = await fetch("/api/render", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        videoUrl: firstMaterial.url,
+        width: platformSpec.resolution.w,
+        height: platformSpec.resolution.h,
+        startTime: parseFloat(trimStart.value) || 0,
+        endTime: parseFloat(trimEnd.value) || null,
+        subtitles,
+      }),
     });
 
-    // Create download link
-    const url = URL.createObjectURL(blob);
+    clearInterval(progressTimer);
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "書き出しに失敗しました");
+    }
+
+    // Set download link to Cloudinary URL
     const fileName = `${editorConcept.platform.replace(/\s/g, "_")}_${Date.now()}.mp4`;
-    btnDownload.href = url;
+    btnDownload.href = data.url;
     btnDownload.download = fileName;
     downloadBlock.style.display = "block";
     exportBar.style.width = "100%";
     exportBar.classList.add("bar-done");
-    exportStatus.textContent = "完了！";
+
+    const sizeMB = data.bytes ? (data.bytes / 1024 / 1024).toFixed(1) + " MB" : "";
+    exportStatus.textContent = `完了！${sizeMB}`;
   } catch (err) {
+    clearInterval(progressTimer);
     exportStatus.textContent = "エラー: " + (err.message || "書き出しに失敗しました");
     exportBar.style.background = "var(--red)";
     exportBar.style.width = "100%";

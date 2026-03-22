@@ -9,9 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ffmpeg/ffmpeg": "^0.12.15",
-    "@ffmpeg/util": "^0.12.2",
-    "@vercel/blob": "^0.27.0"
+    "@vercel/blob": "^0.27.0",
+    "cloudinary": "^2.9.0"
   },
   "devDependencies": {
     "vite": "^6.3.0"
