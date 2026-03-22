@@ -1,4 +1,5 @@
 import { upload } from "@vercel/blob/client";
+import { generateConcepts } from "./concepts.js";
 import "./style.css";
 
 // ── DOM Elements ──
@@ -474,6 +475,12 @@ async function generateReport() {
     }
 
     renderReport(results);
+
+    // Show concept proposals after analysis
+    const validResults = results.filter((r) => !r.error);
+    if (validResults.length > 0) {
+      showConceptProposals(validResults);
+    }
   } catch {
     reportBody.innerHTML = '<div class="analyze-loading">レポート生成に失敗しました</div>';
   }
@@ -580,6 +587,202 @@ function formatDuration(seconds) {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return m + ":" + s.toString().padStart(2, "0");
+}
+
+// ── Concept Proposal ──
+const conceptSection = document.getElementById("conceptSection");
+const conceptGrid = document.getElementById("conceptGrid");
+const conceptStatus = document.getElementById("conceptStatus");
+const approvedSection = document.getElementById("approvedSection");
+const approvedBanner = document.getElementById("approvedBanner");
+
+let currentAnalysisResults = null;
+let approvedConcept = null;
+
+const conceptIcons = {
+  zap: `<svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  book: `<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  star: `<svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  film: `<svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/></svg>`,
+  repeat: `<svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+};
+
+async function showConceptProposals(analysisResults) {
+  currentAnalysisResults = analysisResults;
+  const concepts = generateConcepts(analysisResults);
+
+  if (concepts.length === 0) {
+    conceptSection.style.display = "none";
+    return;
+  }
+
+  conceptSection.style.display = "block";
+  conceptStatus.textContent = concepts.length + " プラン";
+  conceptStatus.style.display = "inline-flex";
+  approvedSection.style.display = "none";
+  approvedConcept = null;
+
+  conceptGrid.innerHTML = "";
+  for (const concept of concepts) {
+    conceptGrid.appendChild(createConceptCard(concept));
+  }
+
+  conceptSection.scrollIntoView({ behavior: "smooth" });
+}
+
+function createConceptCard(concept) {
+  const card = document.createElement("div");
+  card.className = "concept-card";
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "concept-card-header";
+
+  const iconDiv = document.createElement("div");
+  iconDiv.className = "concept-icon";
+  iconDiv.innerHTML = conceptIcons[concept.styleIcon] || conceptIcons.film;
+
+  const titleArea = document.createElement("div");
+  titleArea.className = "concept-title-area";
+  const title = document.createElement("div");
+  title.className = "concept-title";
+  title.textContent = concept.styleName;
+  const platform = document.createElement("div");
+  platform.className = "concept-platform";
+  platform.textContent = concept.platform;
+  titleArea.appendChild(title);
+  titleArea.appendChild(platform);
+
+  header.appendChild(iconDiv);
+  header.appendChild(titleArea);
+  card.appendChild(header);
+
+  // Description
+  const desc = document.createElement("div");
+  desc.className = "concept-desc";
+  desc.textContent = concept.styleDescription;
+  card.appendChild(desc);
+
+  // Specs
+  const specs = document.createElement("div");
+  specs.className = "concept-specs";
+  const specItems = [
+    `尺: ${concept.targetDurationStr}`,
+    `${concept.clipCount}/${concept.totalClips} クリップ使用`,
+    concept.resolution,
+    concept.aspect,
+    `トランジション: ${concept.transition}`,
+  ];
+  for (const text of specItems) {
+    const tag = document.createElement("span");
+    tag.className = "concept-spec";
+    tag.textContent = text;
+    specs.appendChild(tag);
+  }
+  card.appendChild(specs);
+
+  // Structure
+  const structDiv = document.createElement("div");
+  structDiv.className = "concept-structure";
+  const structTitle = document.createElement("div");
+  structTitle.className = "concept-structure-title";
+  structTitle.textContent = "構成";
+  structDiv.appendChild(structTitle);
+
+  for (const step of concept.structure) {
+    const stepEl = document.createElement("div");
+    stepEl.className = "structure-step";
+    const dot = document.createElement("div");
+    dot.className = "structure-dot";
+    const info = document.createElement("div");
+    info.className = "structure-info";
+    const name = document.createElement("div");
+    name.className = "structure-name";
+    name.textContent = `${step.name}（${step.duration}）`;
+    const detail = document.createElement("div");
+    detail.className = "structure-detail";
+    detail.textContent = step.note;
+    info.appendChild(name);
+    info.appendChild(detail);
+    stepEl.appendChild(dot);
+    stepEl.appendChild(info);
+    structDiv.appendChild(stepEl);
+  }
+  card.appendChild(structDiv);
+
+  // Approve button
+  const approveRow = document.createElement("div");
+  approveRow.className = "concept-approve-row";
+  const approveBtn = document.createElement("button");
+  approveBtn.className = "btn-approve";
+  approveBtn.textContent = "このコンセプトで進める";
+  approveBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    approveConcept(concept);
+  });
+  approveRow.appendChild(approveBtn);
+  card.appendChild(approveRow);
+
+  // Click card to select (visual)
+  card.addEventListener("click", () => {
+    document.querySelectorAll(".concept-card").forEach((c) => c.classList.remove("selected"));
+    card.classList.add("selected");
+  });
+
+  return card;
+}
+
+function approveConcept(concept) {
+  approvedConcept = concept;
+
+  // Hide concept grid, show approved banner
+  conceptSection.style.display = "none";
+
+  approvedSection.style.display = "block";
+  approvedBanner.innerHTML = "";
+
+  const header = document.createElement("div");
+  header.className = "approved-header";
+  const check = document.createElement("div");
+  check.className = "approved-check";
+  check.innerHTML = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const title = document.createElement("div");
+  title.className = "approved-title";
+  title.textContent = "コンセプト承認済み";
+  header.appendChild(check);
+  header.appendChild(title);
+  approvedBanner.appendChild(header);
+
+  const detail = document.createElement("div");
+  detail.className = "approved-detail";
+  detail.innerHTML = `
+    <strong>${escapeHtml(concept.styleName)}</strong> / ${escapeHtml(concept.platform)}<br>
+    尺: ${escapeHtml(concept.targetDurationStr)} / ${concept.clipCount}クリップ使用 / ${escapeHtml(concept.resolution)} (${escapeHtml(concept.aspect)})<br>
+    トランジション: ${escapeHtml(concept.transition)}
+  `;
+  approvedBanner.appendChild(detail);
+
+  const actions = document.createElement("div");
+  actions.className = "approved-actions";
+
+  const nextBtn = document.createElement("button");
+  nextBtn.className = "btn-next";
+  nextBtn.textContent = "編集に進む（準備中）";
+  nextBtn.disabled = true;
+  actions.appendChild(nextBtn);
+
+  const reselectBtn = document.createElement("button");
+  reselectBtn.className = "btn-reselect";
+  reselectBtn.textContent = "コンセプトを選び直す";
+  reselectBtn.addEventListener("click", () => {
+    approvedSection.style.display = "none";
+    approvedConcept = null;
+    showConceptProposals(currentAnalysisResults);
+  });
+  actions.appendChild(reselectBtn);
+
+  approvedBanner.appendChild(actions);
+  approvedSection.scrollIntoView({ behavior: "smooth" });
 }
 
 // ── Init ──

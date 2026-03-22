@@ -622,6 +622,217 @@ input[type="file"] { display: none; }
   margin-top: 2px;
 }
 
+/* ── Concept Proposal ── */
+.section-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.concept-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.concept-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  transition: all 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+.concept-card:hover {
+  border-color: #444;
+  background: var(--surface-hover);
+}
+.concept-card.selected {
+  border-color: var(--accent);
+  background: rgba(108, 92, 231, 0.06);
+}
+.concept-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.concept-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(108, 92, 231, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.concept-icon svg {
+  width: 20px;
+  height: 20px;
+  stroke: var(--accent);
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.concept-title-area { flex: 1; }
+.concept-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+.concept-platform {
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+.concept-desc {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.concept-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.concept-spec {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.73rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.concept-structure {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.concept-structure-title {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+.structure-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+}
+.structure-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.structure-step:first-child .structure-dot { background: var(--green); }
+.structure-step:last-child .structure-dot { background: var(--yellow); }
+.structure-info { flex: 1; }
+.structure-name {
+  font-size: 0.82rem;
+  color: var(--text);
+  font-weight: 500;
+}
+.structure-detail {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.concept-approve-row {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+.btn-approve {
+  padding: 8px 24px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-approve:hover { opacity: 0.85; }
+
+/* ── Approved Banner ── */
+.approved-banner {
+  background: rgba(0, 184, 148, 0.06);
+  border: 1px solid rgba(0, 184, 148, 0.25);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.approved-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.approved-check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 184, 148, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.approved-check svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--green);
+  fill: none;
+  stroke-width: 2.5;
+}
+.approved-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--green);
+}
+.approved-detail {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.approved-detail strong { color: var(--text); }
+.approved-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+.btn-next {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-next:hover { opacity: 0.85; }
+.btn-reselect {
+  padding: 10px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-reselect:hover { border-color: #444; color: var(--text); }
+
 /* ── Mobile ── */
 @media (max-width: 640px) {
   body { padding: 24px 12px 60px; }
