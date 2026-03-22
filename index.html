@@ -105,6 +105,58 @@
     <div class="approved-banner" id="approvedBanner"></div>
   </div>
 
+  <!-- 編集セクション -->
+  <div class="container" id="editorSection" style="display:none; margin-top:24px;">
+    <div class="file-section">
+      <div class="file-section-header">
+        <h2>動画編集</h2>
+      </div>
+
+      <!-- プレビュー -->
+      <div class="editor-preview-wrap">
+        <video id="editorPreview" class="editor-preview" controls></video>
+      </div>
+
+      <!-- トリム -->
+      <div class="editor-block">
+        <div class="editor-block-title">トリム範囲</div>
+        <div class="trim-row">
+          <label class="trim-label">開始 <input type="number" id="trimStart" class="trim-input" value="0" min="0" step="0.1"> 秒</label>
+          <label class="trim-label">終了 <input type="number" id="trimEnd" class="trim-input" value="0" min="0" step="0.1"> 秒</label>
+        </div>
+      </div>
+
+      <!-- テロップ -->
+      <div class="editor-block">
+        <div class="editor-block-title">テロップ</div>
+        <div id="subtitleList" class="subtitle-list"></div>
+        <button class="btn-add-sub" id="btnAddSubtitle">+ テロップを追加</button>
+      </div>
+
+      <!-- 書き出し -->
+      <div class="editor-block">
+        <div class="editor-block-title">書き出し設定</div>
+        <div class="export-info" id="exportInfo"></div>
+        <button class="btn-export" id="btnExport">書き出し開始</button>
+        <div class="export-progress" id="exportProgress" style="display:none">
+          <div class="bar-wrap"><div class="bar" id="exportBar"></div></div>
+          <div class="export-status" id="exportStatus">準備中...</div>
+        </div>
+      </div>
+
+      <!-- ダウンロード -->
+      <div class="editor-block" id="downloadBlock" style="display:none">
+        <div class="download-ready">
+          <div class="download-icon">
+            <svg viewBox="0 0 24 24" width="32" height="32" stroke="#00b894" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <p>書き出し完了！投稿可能な状態です</p>
+          <a class="btn-download" id="btnDownload" download>ダウンロード</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 解析レポートセクション -->
   <div class="container" id="reportSection" style="display:none; margin-top:24px;">
     <div class="file-section">

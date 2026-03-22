@@ -833,6 +833,192 @@ input[type="file"] { display: none; }
 }
 .btn-reselect:hover { border-color: #444; color: var(--text); }
 
+/* ── Editor ── */
+.editor-preview-wrap {
+  margin-bottom: 16px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+}
+.editor-preview {
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  display: block;
+}
+.editor-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 10px;
+}
+.editor-block-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+.trim-row {
+  display: flex;
+  gap: 12px;
+}
+.trim-label {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.trim-input {
+  width: 80px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  outline: none;
+}
+.trim-input:focus { border-color: var(--accent); }
+
+/* Subtitles */
+.subtitle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.subtitle-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+.subtitle-row .sub-text {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  outline: none;
+  resize: none;
+  min-height: 36px;
+}
+.subtitle-row .sub-text:focus { border-color: var(--accent); }
+.subtitle-row .sub-time {
+  width: 55px;
+  padding: 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8rem;
+  text-align: center;
+  outline: none;
+}
+.subtitle-row .sub-time:focus { border-color: var(--accent); }
+.sub-pos {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8rem;
+  outline: none;
+  cursor: pointer;
+}
+.btn-sub-remove {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  margin-top: 4px;
+}
+.btn-sub-remove:hover { color: var(--red); background: rgba(214,48,49,0.08); }
+.btn-add-sub {
+  width: 100%;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-add-sub:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Export */
+.export-info {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.btn-export {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-export:hover { opacity: 0.85; }
+.btn-export:disabled { opacity: 0.5; cursor: not-allowed; }
+.export-progress {
+  margin-top: 12px;
+}
+.export-status {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-top: 6px;
+  text-align: center;
+}
+
+/* Download */
+.download-ready {
+  text-align: center;
+  padding: 16px;
+}
+.download-icon { margin-bottom: 8px; }
+.download-ready p {
+  font-size: 0.9rem;
+  color: var(--green);
+  margin-bottom: 14px;
+}
+.btn-download {
+  display: inline-block;
+  padding: 12px 32px;
+  border-radius: 8px;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.btn-download:hover { opacity: 0.85; }
+
 /* ── Mobile ── */
 @media (max-width: 640px) {
   body { padding: 24px 12px 60px; }

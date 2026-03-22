@@ -1,5 +1,6 @@
 import { upload } from "@vercel/blob/client";
-import { generateConcepts } from "./concepts.js";
+import { generateConcepts, PLATFORM_SPECS } from "./concepts.js";
+import { editVideo } from "./editor.js";
 import "./style.css";
 
 // ── DOM Elements ──
@@ -767,8 +768,8 @@ function approveConcept(concept) {
 
   const nextBtn = document.createElement("button");
   nextBtn.className = "btn-next";
-  nextBtn.textContent = "編集に進む（準備中）";
-  nextBtn.disabled = true;
+  nextBtn.textContent = "編集に進む";
+  nextBtn.addEventListener("click", () => openEditor(concept));
   actions.appendChild(nextBtn);
 
   const reselectBtn = document.createElement("button");
@@ -784,6 +785,182 @@ function approveConcept(concept) {
   approvedBanner.appendChild(actions);
   approvedSection.scrollIntoView({ behavior: "smooth" });
 }
+
+// ── Editor Section ──
+const editorSection = document.getElementById("editorSection");
+const editorPreview = document.getElementById("editorPreview");
+const trimStart = document.getElementById("trimStart");
+const trimEnd = document.getElementById("trimEnd");
+const subtitleList = document.getElementById("subtitleList");
+const btnAddSubtitle = document.getElementById("btnAddSubtitle");
+const btnExport = document.getElementById("btnExport");
+const exportProgress = document.getElementById("exportProgress");
+const exportBar = document.getElementById("exportBar");
+const exportStatus = document.getElementById("exportStatus");
+const exportInfo = document.getElementById("exportInfo");
+const downloadBlock = document.getElementById("downloadBlock");
+const btnDownload = document.getElementById("btnDownload");
+
+let editorConcept = null;
+let subtitleCounter = 0;
+
+function openEditor(concept) {
+  editorConcept = concept;
+  editorSection.style.display = "block";
+  downloadBlock.style.display = "none";
+  exportProgress.style.display = "none";
+  btnExport.disabled = false;
+
+  // Load first material into preview
+  const firstMaterial = concept.materials[0];
+  if (firstMaterial) {
+    editorPreview.src = firstMaterial.url;
+    editorPreview.addEventListener("loadedmetadata", function onMeta() {
+      editorPreview.removeEventListener("loadedmetadata", onMeta);
+      trimStart.value = concept.structure[0] ? 0 : 0;
+      trimEnd.value = Math.min(
+        editorPreview.duration,
+        concept.targetDuration
+      ).toFixed(1);
+      trimEnd.max = editorPreview.duration.toFixed(1);
+      trimStart.max = editorPreview.duration.toFixed(1);
+    });
+  }
+
+  // Export info
+  const platformSpec = PLATFORM_SPECS[concept.platformId];
+  exportInfo.textContent =
+    `${concept.platform} / ${platformSpec.resolution.w}x${platformSpec.resolution.h} ` +
+    `(${concept.aspect}) / 無音 / MP4`;
+
+  // Clear subtitles and add a default one
+  subtitleList.innerHTML = "";
+  subtitleCounter = 0;
+  addSubtitleRow("", 0, concept.targetDuration, "bottom");
+
+  editorSection.scrollIntoView({ behavior: "smooth" });
+}
+
+// Add subtitle
+btnAddSubtitle.addEventListener("click", () => {
+  const end = parseFloat(trimEnd.value) || 10;
+  addSubtitleRow("", 0, end, "bottom");
+});
+
+function addSubtitleRow(text, start, end, position) {
+  const id = "sub-" + subtitleCounter++;
+  const row = document.createElement("div");
+  row.className = "subtitle-row";
+  row.id = id;
+
+  const textInput = document.createElement("textarea");
+  textInput.className = "sub-text";
+  textInput.placeholder = "テロップのテキスト";
+  textInput.value = text;
+  textInput.rows = 1;
+
+  const startInput = document.createElement("input");
+  startInput.className = "sub-time";
+  startInput.type = "number";
+  startInput.step = "0.1";
+  startInput.min = "0";
+  startInput.value = start;
+  startInput.title = "開始(秒)";
+
+  const endInput = document.createElement("input");
+  endInput.className = "sub-time";
+  endInput.type = "number";
+  endInput.step = "0.1";
+  endInput.min = "0";
+  endInput.value = end;
+  endInput.title = "終了(秒)";
+
+  const posSelect = document.createElement("select");
+  posSelect.className = "sub-pos";
+  for (const [val, label] of [["bottom", "下"], ["center", "中"], ["top", "上"]]) {
+    const opt = document.createElement("option");
+    opt.value = val;
+    opt.textContent = label;
+    if (val === position) opt.selected = true;
+    posSelect.appendChild(opt);
+  }
+
+  const removeBtn = document.createElement("button");
+  removeBtn.className = "btn-sub-remove";
+  removeBtn.textContent = "\u00d7";
+  removeBtn.addEventListener("click", () => row.remove());
+
+  row.appendChild(textInput);
+  row.appendChild(startInput);
+  row.appendChild(endInput);
+  row.appendChild(posSelect);
+  row.appendChild(removeBtn);
+  subtitleList.appendChild(row);
+}
+
+// Export
+btnExport.addEventListener("click", async () => {
+  if (!editorConcept) return;
+
+  btnExport.disabled = true;
+  exportProgress.style.display = "block";
+  downloadBlock.style.display = "none";
+  exportBar.style.width = "0%";
+  exportStatus.textContent = "FFmpeg を読み込み中...";
+
+  // Gather subtitles
+  const subtitles = [];
+  subtitleList.querySelectorAll(".subtitle-row").forEach((row) => {
+    const text = row.querySelector(".sub-text").value.trim();
+    if (!text) return;
+    subtitles.push({
+      text,
+      startTime: parseFloat(row.querySelectorAll(".sub-time")[0].value) || 0,
+      endTime: parseFloat(row.querySelectorAll(".sub-time")[1].value) || 10,
+      position: row.querySelector(".sub-pos").value,
+    });
+  });
+
+  const platformSpec = PLATFORM_SPECS[editorConcept.platformId];
+  const firstMaterial = editorConcept.materials[0];
+
+  try {
+    const blob = await editVideo({
+      videoUrl: firstMaterial.url,
+      filename: firstMaterial.name,
+      platform: platformSpec.resolution,
+      startTime: parseFloat(trimStart.value) || 0,
+      endTime: parseFloat(trimEnd.value) || null,
+      subtitles,
+      onProgress: ({ message, progress }) => {
+        if (progress !== null) {
+          const pct = Math.round(progress * 100);
+          exportBar.style.width = pct + "%";
+          exportStatus.textContent = `処理中... ${pct}%`;
+        }
+        if (message) {
+          exportStatus.textContent = message;
+        }
+      },
+    });
+
+    // Create download link
+    const url = URL.createObjectURL(blob);
+    const fileName = `${editorConcept.platform.replace(/\s/g, "_")}_${Date.now()}.mp4`;
+    btnDownload.href = url;
+    btnDownload.download = fileName;
+    downloadBlock.style.display = "block";
+    exportBar.style.width = "100%";
+    exportBar.classList.add("bar-done");
+    exportStatus.textContent = "完了！";
+  } catch (err) {
+    exportStatus.textContent = "エラー: " + (err.message || "書き出しに失敗しました");
+    exportBar.style.background = "var(--red)";
+    exportBar.style.width = "100%";
+  } finally {
+    btnExport.disabled = false;
+  }
+});
 
 // ── Init ──
 loadFileList();
