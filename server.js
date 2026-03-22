@@ -82,6 +82,69 @@ app.post("/api/delete", (req, res) => {
   res.json({ deleted: true });
 });
 
+// ── Video Merge (ffmpeg concat) ──
+app.post("/api/merge", async (req, res) => {
+  const { filenames, order } = req.body || {};
+  if (!filenames || !Array.isArray(filenames) || filenames.length < 2) {
+    return res.status(400).json({ error: "2本以上のファイル名を指定してください" });
+  }
+
+  // Validate all files exist
+  const paths = filenames.map((f) => path.join(UPLOAD_DIR, path.basename(f)));
+  for (const p of paths) {
+    if (!fs.existsSync(p)) {
+      return res.status(404).json({ error: `ファイルが見つかりません: ${path.basename(p)}` });
+    }
+  }
+
+  try {
+    // Create concat list file
+    const listFile = path.join(UPLOAD_DIR, `concat_${Date.now()}.txt`);
+    const listContent = paths.map((p) => `file '${p}'`).join("\n");
+    fs.writeFileSync(listFile, listContent);
+
+    const outputFile = `merged_${Date.now()}.mp4`;
+    const outputPath = path.join(UPLOAD_DIR, outputFile);
+
+    // ffmpeg concat
+    await new Promise((resolve, reject) => {
+      execFile("ffmpeg", [
+        "-y",
+        "-f", "concat",
+        "-safe", "0",
+        "-i", listFile,
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "18",
+        "-pix_fmt", "yuv420p",
+        "-r", "30",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-movflags", "+faststart",
+        outputPath,
+      ], { timeout: 300000 }, (error, stdout, stderr) => {
+        fs.unlinkSync(listFile);
+        if (error) reject(new Error(stderr || error.message));
+        else resolve();
+      });
+    });
+
+    const stat = fs.statSync(outputPath);
+    console.log(`Merged ${filenames.length} files → ${outputFile}`);
+
+    res.json({
+      success: true,
+      filename: outputFile,
+      url: `/uploads/${outputFile}`,
+      size_mb: Math.round((stat.size / (1024 * 1024)) * 10) / 10,
+      count: filenames.length,
+    });
+  } catch (err) {
+    console.error("Merge error:", err);
+    res.status(500).json({ error: "動画の結合に失敗: " + err.message });
+  }
+});
+
 // ── Whisper Transcription (ローカル / API 両対応) ──
 app.post("/api/transcribe", async (req, res) => {
   const { filename } = req.body || {};

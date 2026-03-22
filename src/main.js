@@ -197,9 +197,77 @@ async function loadFileList() {
   }
 }
 
+// ── Merge Selection ──
+const mergeBar = document.getElementById("mergeBar");
+const mergeCount = document.getElementById("mergeCount");
+const btnMerge = document.getElementById("btnMerge");
+let mergeSelected = []; // ordered list of filenames
+
+function updateMergeBar() {
+  if (mergeSelected.length >= 2) {
+    mergeBar.style.display = "flex";
+    mergeCount.textContent = `${mergeSelected.length}本選択中（クリック順に結合）`;
+  } else {
+    mergeBar.style.display = mergeSelected.length === 1 ? "flex" : "none";
+    mergeCount.textContent = mergeSelected.length === 1 ? "1本選択中（もう1本以上選んでください）" : "";
+  }
+}
+
+function toggleMergeSelect(filename, card) {
+  const idx = mergeSelected.indexOf(filename);
+  if (idx >= 0) {
+    mergeSelected.splice(idx, 1);
+    card.classList.remove("selected-for-merge");
+    const badge = card.querySelector(".merge-order");
+    if (badge) badge.remove();
+  } else {
+    mergeSelected.push(filename);
+    card.classList.add("selected-for-merge");
+    const badge = document.createElement("div");
+    badge.className = "merge-order";
+    badge.textContent = mergeSelected.length;
+    card.insertBefore(badge, card.firstChild);
+  }
+  // Update all badge numbers
+  document.querySelectorAll(".file-card").forEach((c) => {
+    const fn = c.dataset.filename;
+    const order = mergeSelected.indexOf(fn);
+    const b = c.querySelector(".merge-order");
+    if (b) b.textContent = order >= 0 ? order + 1 : "";
+  });
+  updateMergeBar();
+}
+
+btnMerge.addEventListener("click", async () => {
+  if (mergeSelected.length < 2) return;
+  btnMerge.disabled = true;
+  btnMerge.textContent = "結合中...";
+
+  try {
+    const res = await fetch("/api/merge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filenames: mergeSelected }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    mergeSelected = [];
+    updateMergeBar();
+    loadFileList();
+    alert(`結合完了！ ${data.count}本 → 1本（${data.size_mb}MB）`);
+  } catch (err) {
+    alert("結合エラー: " + err.message);
+  } finally {
+    btnMerge.disabled = false;
+    btnMerge.textContent = "選択した動画を結合";
+  }
+});
+
 function createFileCard(f) {
   const card = document.createElement("div");
   card.className = "file-card";
+  card.dataset.filename = f.name;
 
   // Icon
   const iconDiv = document.createElement("div");
@@ -250,7 +318,7 @@ function createFileCard(f) {
       const res = await fetch("/api/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: f.url }),
+        body: JSON.stringify({ filename: f.name }),
       });
       if (res.ok) loadFileList();
       else alert("削除に失敗しました");
@@ -274,9 +342,16 @@ function createFileCard(f) {
   actionsDiv.appendChild(dlLink);
   actionsDiv.appendChild(delBtn);
 
-  // Click card to analyze
+  // Click card to select for merge, double-click to analyze
   card.style.cursor = "pointer";
-  card.addEventListener("click", () => openAnalyze(f));
+  card.addEventListener("click", (e) => {
+    if (e.target.closest(".file-actions")) return; // don't trigger on action buttons
+    toggleMergeSelect(f.name, card);
+  });
+  card.addEventListener("dblclick", (e) => {
+    if (e.target.closest(".file-actions")) return;
+    openAnalyze(f);
+  });
 
   card.appendChild(iconDiv);
   card.appendChild(infoDiv);
@@ -1086,7 +1161,7 @@ btnAutoSubtitle.addEventListener("click", async () => {
     const res = await fetch("/api/transcribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ videoUrl: editorConcept.materials[0].url }),
+      body: JSON.stringify({ filename: editorConcept.materials[0].name }),
     });
 
     clearInterval(progressTimer);
@@ -1192,7 +1267,7 @@ btnExport.addEventListener("click", async () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        videoUrl: firstMaterial.url,
+        filename: firstMaterial.name,
         width: platformSpec.resolution.w,
         height: platformSpec.resolution.h,
         startTime: parseFloat(trimStart.value) || 0,
