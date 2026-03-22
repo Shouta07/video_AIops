@@ -256,9 +256,24 @@ function createFileCard(f) {
     }
   });
 
+  // Analyze button
+  const analyzeBtn = document.createElement("button");
+  analyzeBtn.className = "btn-icon";
+  analyzeBtn.title = "解析";
+  analyzeBtn.innerHTML = `<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+  analyzeBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openAnalyze(f);
+  });
+
+  actionsDiv.appendChild(analyzeBtn);
   actionsDiv.appendChild(openBtn);
   actionsDiv.appendChild(dlLink);
   actionsDiv.appendChild(delBtn);
+
+  // Click card to analyze
+  card.style.cursor = "pointer";
+  card.addEventListener("click", () => openAnalyze(f));
 
   card.appendChild(iconDiv);
   card.appendChild(infoDiv);
@@ -300,6 +315,271 @@ function showSetupBannerIfNeeded(msg) {
   ) {
     setupBanner.style.display = "block";
   }
+}
+
+// ── Analyze Modal ──
+const analyzeModal = document.getElementById("analyzeModal");
+const analyzeVideo = document.getElementById("analyzeVideo");
+const analyzeGrid = document.getElementById("analyzeGrid");
+const modalTitle = document.getElementById("modalTitle");
+const modalClose = document.getElementById("modalClose");
+const btnAnalyzeAll = document.getElementById("btnAnalyzeAll");
+const reportSection = document.getElementById("reportSection");
+const reportBody = document.getElementById("reportBody");
+const btnCloseReport = document.getElementById("btnCloseReport");
+
+modalClose.addEventListener("click", closeModal);
+analyzeModal.addEventListener("click", (e) => {
+  if (e.target === analyzeModal) closeModal();
+});
+
+function closeModal() {
+  analyzeModal.classList.remove("open");
+  analyzeVideo.pause();
+  analyzeVideo.src = "";
+}
+
+function openAnalyze(file) {
+  modalTitle.textContent = file.name;
+  analyzeGrid.innerHTML = '<div class="analyze-loading">解析中...</div>';
+  analyzeVideo.src = file.url;
+  analyzeModal.classList.add("open");
+
+  analyzeVideo.addEventListener("loadedmetadata", function onMeta() {
+    analyzeVideo.removeEventListener("loadedmetadata", onMeta);
+    const meta = extractMetadata(analyzeVideo, file);
+    renderAnalysis(meta);
+  });
+
+  analyzeVideo.addEventListener("error", function onErr() {
+    analyzeVideo.removeEventListener("error", onErr);
+    analyzeGrid.innerHTML = '<div class="analyze-loading">この動画は解析できませんでした</div>';
+  });
+}
+
+function extractMetadata(video, file) {
+  const w = video.videoWidth;
+  const h = video.videoHeight;
+  const dur = video.duration;
+
+  // Determine aspect ratio
+  let aspect = "不明";
+  let platform = [];
+  if (w && h) {
+    const ratio = w / h;
+    if (Math.abs(ratio - 9 / 16) < 0.05) {
+      aspect = "9:16 (縦)";
+      platform.push("TikTok", "Reels", "Shorts");
+    } else if (Math.abs(ratio - 16 / 9) < 0.05) {
+      aspect = "16:9 (横)";
+      platform.push("YouTube");
+    } else if (Math.abs(ratio - 1) < 0.05) {
+      aspect = "1:1 (正方形)";
+      platform.push("Instagram Feed");
+    } else if (Math.abs(ratio - 4 / 5) < 0.05) {
+      aspect = "4:5";
+      platform.push("Instagram Feed");
+    } else {
+      aspect = `${w}:${h}`;
+    }
+  }
+
+  // Resolution class
+  let quality = "不明";
+  if (h >= 2160) quality = "4K";
+  else if (h >= 1440) quality = "2K";
+  else if (h >= 1080) quality = "Full HD";
+  else if (h >= 720) quality = "HD";
+  else if (h > 0) quality = "SD";
+
+  return {
+    width: w,
+    height: h,
+    duration: dur,
+    durationStr: formatDuration(dur),
+    aspect,
+    quality,
+    platform,
+    sizeMB: file.size_mb,
+    name: file.name,
+    url: file.url,
+  };
+}
+
+function renderAnalysis(meta) {
+  analyzeGrid.innerHTML = "";
+  const items = [
+    { label: "解像度", value: `${meta.width} x ${meta.height}` },
+    { label: "画質", value: meta.quality },
+    { label: "尺", value: meta.durationStr },
+    { label: "アスペクト比", value: meta.aspect },
+    { label: "ファイルサイズ", value: meta.sizeMB + " MB" },
+    {
+      label: "適合プラットフォーム",
+      value: meta.platform.length > 0 ? meta.platform.join(", ") : "カスタム",
+      full: true,
+    },
+  ];
+
+  for (const item of items) {
+    const el = document.createElement("div");
+    el.className = "analyze-item" + (item.full ? " full" : "");
+    const labelEl = document.createElement("div");
+    labelEl.className = "label";
+    labelEl.textContent = item.label;
+    const valEl = document.createElement("div");
+    valEl.className = "value";
+    valEl.textContent = item.value;
+    el.appendChild(labelEl);
+    el.appendChild(valEl);
+    analyzeGrid.appendChild(el);
+  }
+}
+
+// ── Batch Analysis Report ──
+btnAnalyzeAll.addEventListener("click", async () => {
+  closeModal();
+  await generateReport();
+});
+
+btnCloseReport.addEventListener("click", () => {
+  reportSection.style.display = "none";
+});
+
+async function generateReport() {
+  reportSection.style.display = "block";
+  reportBody.innerHTML = '<div class="analyze-loading">全素材を解析中...</div>';
+  reportSection.scrollIntoView({ behavior: "smooth" });
+
+  try {
+    const res = await fetch("/api/files");
+    const data = await res.json();
+    if (!data.files || !data.files.length) {
+      reportBody.innerHTML = '<div class="analyze-loading">素材がありません</div>';
+      return;
+    }
+
+    const results = [];
+    for (const f of data.files) {
+      try {
+        const meta = await analyzeVideoFromUrl(f);
+        results.push(meta);
+      } catch {
+        results.push({
+          name: f.name,
+          sizeMB: f.size_mb,
+          error: true,
+        });
+      }
+    }
+
+    renderReport(results);
+  } catch {
+    reportBody.innerHTML = '<div class="analyze-loading">レポート生成に失敗しました</div>';
+  }
+}
+
+function analyzeVideoFromUrl(file) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.crossOrigin = "anonymous";
+    video.muted = true;
+
+    video.addEventListener("loadedmetadata", () => {
+      resolve(extractMetadata(video, file));
+      video.src = "";
+    });
+    video.addEventListener("error", () => {
+      reject(new Error("Failed to load"));
+    });
+
+    video.src = file.url;
+  });
+}
+
+function renderReport(results) {
+  const valid = results.filter((r) => !r.error);
+  const totalDuration = valid.reduce((s, r) => s + (r.duration || 0), 0);
+  const totalSize = results.reduce((s, r) => s + (r.sizeMB || 0), 0);
+
+  reportBody.innerHTML = "";
+
+  // Summary
+  const summary = document.createElement("div");
+  summary.className = "report-summary";
+  summary.innerHTML = `
+    <div class="report-summary-grid">
+      <div class="report-summary-item">
+        <div class="num">${results.length}</div>
+        <div class="label">素材数</div>
+      </div>
+      <div class="report-summary-item">
+        <div class="num">${formatDuration(totalDuration)}</div>
+        <div class="label">合計尺</div>
+      </div>
+      <div class="report-summary-item">
+        <div class="num">${totalSize.toFixed(1)} MB</div>
+        <div class="label">合計サイズ</div>
+      </div>
+    </div>
+  `;
+  reportBody.appendChild(summary);
+
+  // Each file
+  for (const r of results) {
+    const card = document.createElement("div");
+    card.className = "report-card";
+
+    const header = document.createElement("div");
+    header.className = "report-card-header";
+    const nameEl = document.createElement("span");
+    nameEl.className = "name";
+    nameEl.textContent = r.name;
+    header.appendChild(nameEl);
+
+    card.appendChild(header);
+
+    if (r.error) {
+      const tag = document.createElement("span");
+      tag.className = "report-tag warn";
+      tag.textContent = "解析不可";
+      header.appendChild(tag);
+    } else {
+      const metaDiv = document.createElement("div");
+      metaDiv.className = "report-meta";
+
+      const tags = [
+        { text: `${r.width}x${r.height}`, cls: r.height >= 1080 ? "good" : "" },
+        { text: r.quality, cls: r.quality === "Full HD" || r.quality === "4K" ? "good" : "" },
+        { text: r.durationStr, cls: "" },
+        { text: r.aspect, cls: "" },
+        { text: r.sizeMB + " MB", cls: "" },
+      ];
+
+      if (r.platform.length > 0) {
+        tags.push({ text: r.platform.join(" / "), cls: "good" });
+      }
+
+      for (const t of tags) {
+        const tag = document.createElement("span");
+        tag.className = "report-tag" + (t.cls ? " " + t.cls : "");
+        tag.textContent = t.text;
+        metaDiv.appendChild(tag);
+      }
+
+      card.appendChild(metaDiv);
+    }
+
+    reportBody.appendChild(card);
+  }
+}
+
+function formatDuration(seconds) {
+  if (!seconds || !isFinite(seconds)) return "0:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return m + ":" + s.toString().padStart(2, "0");
 }
 
 // ── Init ──

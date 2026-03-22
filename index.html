@@ -69,6 +69,36 @@
 
   </div>
 
+  <!-- 解析モーダル -->
+  <div class="modal-overlay" id="analyzeModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">素材解析</h2>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <video id="analyzeVideo" class="analyze-preview" preload="metadata" controls></video>
+        <div class="analyze-grid" id="analyzeGrid">
+          <div class="analyze-loading">解析中...</div>
+        </div>
+        <div class="analyze-actions">
+          <button class="btn-analyze" id="btnAnalyzeAll">全素材を一括解析</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 解析レポートセクション -->
+  <div class="container" id="reportSection" style="display:none; margin-top:24px;">
+    <div class="file-section">
+      <div class="file-section-header">
+        <h2>素材解析レポート</h2>
+        <button class="btn-analyze small" id="btnCloseReport">閉じる</button>
+      </div>
+      <div id="reportBody"></div>
+    </div>
+  </div>
+
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
