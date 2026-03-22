@@ -262,18 +262,118 @@ def menu_quick():
         pause()
         return
 
+    # テンプレート選択（任意）
+    from scripts.analyze_buzz import list_templates
+    templates = list_templates(client_id)
+    tmpl_path = None
+    if templates:
+        print(f"\n  バズの型を使いますか？")
+        tmpl_options = [(f"{t['name']} ({t['template_name']})", t["path"]) for t in templates]
+        tmpl_options.append(("型なし（AIにおまかせ）", None))
+        tmpl_path = menu_select("型を選択:", tmpl_options)
+
     print(f"\n  → 素材解析 → 投稿プラン → 動画生成 → レポート を一括実行します")
     yn = input("  実行しますか？ (Y/n): ").strip().lower()
     if yn == "n":
         return
 
-    subprocess.run([
+    cmd = [
         sys.executable, "scripts/planner.py",
         "--client", client_id,
         "--genre", profile["genre"],
         "--recycle",
-    ])
+    ]
+    if tmpl_path:
+        cmd += ["--template", tmpl_path]
+    subprocess.run(cmd)
     pause()
+
+
+# ─── メニュー 6: バズ動画から型を作る ───
+
+def menu_buzz():
+    while True:
+        clear()
+        header()
+        action = menu_select("バズ動画の型", [
+            ("バズ動画URLから型を作る", "analyze"),
+            ("保存済みの型一覧", "list"),
+            ("型を使って投稿プランを生成", "use"),
+        ])
+        if action is None:
+            return
+
+        if action == "analyze":
+            print("\n  バズ動画のURLを入力してください。")
+            print("  複数の場合はカンマ区切り → 共通パターンを抽出します。")
+            raw_urls = input("\n  URL: ").strip()
+            if not raw_urls:
+                continue
+            urls = [u.strip() for u in raw_urls.split(",") if u.strip()]
+
+            name = input("  型の名前（例: ビフォアフ王道）: ").strip()
+            if not name:
+                name = "バズ型"
+
+            # クライアント選択（任意）
+            print("\n  クライアントに紐付けますか？")
+            client_id = select_client()
+
+            cmd = [sys.executable, "scripts/analyze_buzz.py"] + urls + ["--name", name]
+            if client_id:
+                cmd += ["--client", client_id]
+            subprocess.run(cmd)
+            pause()
+
+        elif action == "list":
+            # クライアント選択
+            client_id = select_client()
+            from scripts.analyze_buzz import list_templates
+            templates = list_templates(client_id)
+            if not templates:
+                print("\n  保存済みの型がありません。")
+                print("  先に「バズ動画URLから型を作る」を実行してください。")
+            else:
+                print(f"\n  ── 保存済みの型 ──\n")
+                for t in templates:
+                    print(f"  {t['name']:20s}  {t['template_name']:20s}  {t['duration']}秒  {t['parts']}パート")
+                    print(f"    → {t['path']}")
+            pause()
+
+        elif action == "use":
+            # クライアント選択
+            client_id = select_client()
+            if not client_id:
+                continue
+
+            from scripts.client import load_profile
+            from scripts.analyze_buzz import list_templates
+            profile = load_profile(client_id)
+
+            templates = list_templates(client_id)
+            if not templates:
+                print("\n  ❌ テンプレートがありません。先にバズ動画から型を作ってください。")
+                pause()
+                continue
+
+            # テンプレート選択
+            tmpl_options = [(f"{t['name']} ({t['template_name']}, {t['duration']}秒)", t["path"]) for t in templates]
+            tmpl_path = menu_select("使う型を選択:", tmpl_options)
+            if not tmpl_path:
+                continue
+
+            recycle = input("\n  素材リサイクル提案も出す？ (y/N): ").strip().lower() == "y"
+
+            cmd = [
+                sys.executable, "scripts/planner.py",
+                "--client", client_id,
+                "--genre", profile["genre"],
+                "--template", tmpl_path,
+            ]
+            if recycle:
+                cmd.append("--recycle")
+            subprocess.run(cmd)
+            pause()
 
 
 # ─── メインメニュー ───
@@ -284,6 +384,7 @@ def main():
         header()
         action = menu_select("メインメニュー", [
             ("クイック実行（素材 → 投稿プラン → 動画生成）", "quick"),
+            ("バズ動画の型（URL分析 / 型で投稿生成）", "buzz"),
             ("投稿プラン（確認・修正・再生成）", "plan"),
             ("撮影指示書を作成", "brief"),
             ("クライアント管理", "client"),
@@ -295,6 +396,8 @@ def main():
             break
         elif action == "quick":
             menu_quick()
+        elif action == "buzz":
+            menu_buzz()
         elif action == "plan":
             menu_plan()
         elif action == "brief":

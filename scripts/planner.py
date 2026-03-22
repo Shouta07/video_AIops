@@ -177,7 +177,7 @@ def analyze_all(videos):
 #  Step 2: GPT で投稿プランを生成
 # ═══════════════════════════════════════════════════
 
-def generate_post_plan(catalog, genre, recycle=False, profile=None):
+def generate_post_plan(catalog, genre, recycle=False, profile=None, template=None):
     """GPTで素材を仕分け → 投稿プランを生成"""
     print(f"\n🤖 投稿プランを生成中...")
 
@@ -223,6 +223,32 @@ def generate_post_plan(catalog, genre, recycle=False, profile=None):
 - 使用禁止ハッシュタグ: {' '.join(ng_tags) if ng_tags else 'なし'}
 - NG表現（使ってはいけない言葉）: {', '.join(ng_words) if ng_words else 'なし'}"""
 
+    # バズ動画テンプレートをプロンプトに注入
+    template_instruction = ""
+    if template:
+        tmpl_structure = template.get("structure", [])
+        tmpl_parts = "\n".join(
+            f"  パート{i+1}: [{p.get('duration_sec', '?')}秒] {p.get('part_name', '')} — {p.get('role', '')}\n"
+            f"    テロップ: {p.get('telop_guide', '')}\n"
+            f"    カメラ: {p.get('camera_guide', '')}"
+            for i, p in enumerate(tmpl_structure)
+        )
+        template_instruction = f"""
+
+## バズ動画テンプレート（この型に従って構成すること！！！）:
+型の名前: {template.get('template_name', '')}
+目標尺: {template.get('total_duration', '?')}秒
+この型が効く理由: {template.get('why_it_works', '')}
+冒頭フックパターン: {template.get('hook_pattern', '')}
+CTAパターン: {template.get('cta_pattern', '')}
+
+構成（この順番・比率を必ず守ること）:
+{tmpl_parts}
+
+重要: 素材をこのテンプレートの構成に当てはめてください。
+パートの順番と時間配分を守り、各パートに最適な素材を割り当てること。
+テロップもテンプレートの指示に従って設計すること。"""
+
     recycle_instruction = ""
     if recycle:
         recycle_instruction = """
@@ -241,6 +267,7 @@ def generate_post_plan(catalog, genre, recycle=False, profile=None):
 
 ## ジャンル: {genre}
 {brand_instruction}
+{template_instruction}
 
 ## ルール
 
@@ -603,6 +630,7 @@ def main():
                         help="ジャンル（デフォルト: beauty）")
     parser.add_argument("--input-dir", default="input", help="素材フォルダ（デフォルト: input/）")
     parser.add_argument("--client", help="クライアントID（clients/{id}/ のフォルダを使用）")
+    parser.add_argument("--template", help="バズ動画テンプレートJSONのパス（型を指定して投稿生成）")
     parser.add_argument("--dry-run", action="store_true", help="プラン確認のみ（動画生成しない）")
     parser.add_argument("--recycle", action="store_true", help="素材リサイクル提案も生成")
     parser.add_argument("--plan-json", help="既存のプランJSONから動画を生成（プラン修正後の再実行用）")
@@ -658,8 +686,18 @@ def main():
             print("  ❌ 有効な素材がありません。")
             sys.exit(1)
 
+        # テンプレート読み込み
+        buzz_template = None
+        if args.template:
+            if os.path.exists(args.template):
+                with open(args.template, encoding="utf-8") as f:
+                    buzz_template = json.load(f)
+                print(f"  テンプレート: {buzz_template.get('template_name', args.template)}")
+            else:
+                print(f"  ⚠️  テンプレートが見つかりません: {args.template}")
+
         # Step 2: 投稿プラン生成
-        plan = generate_post_plan(catalog, args.genre, recycle=args.recycle, profile=client_profile)
+        plan = generate_post_plan(catalog, args.genre, recycle=args.recycle, profile=client_profile, template=buzz_template)
 
     posts = plan.get("posts", [])
     print(f"\n  → {len(posts)}本の投稿プランを生成")
