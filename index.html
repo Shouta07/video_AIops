@@ -22,14 +22,38 @@
       環境変数 <code>BLOB_READ_WRITE_TOKEN</code> が自動で追加されます。
     </div>
 
-    <div class="drop-zone" id="dropZone">
-      <div class="icon">
-        <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-      </div>
-      <div class="label">ここにドラッグ＆ドロップ、またはクリックして選択</div>
-      <div class="hint">MP4 / MOV / AVI / MKV / WebM（最大 500MB）</div>
+    <!-- タブ切替 -->
+    <div class="tab-bar">
+      <button class="tab active" data-tab="drag">ドラッグ＆ドロップ</button>
+      <button class="tab" data-tab="url">URLで取り込み</button>
     </div>
-    <input type="file" id="fileInput" multiple accept=".mp4,.mov,.avi,.mkv,.webm,.m4v">
+
+    <!-- ドラッグ＆ドロップ -->
+    <div class="tab-content active" id="tab-drag">
+      <div class="drop-zone" id="dropZone">
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+        </div>
+        <div class="label">ここにドラッグ＆ドロップ、またはクリックして選択</div>
+        <div class="hint">MP4 / MOV / AVI / MKV / WebM（最大 500MB）</div>
+      </div>
+      <input type="file" id="fileInput" multiple accept=".mp4,.mov,.avi,.mkv,.webm,.m4v">
+    </div>
+
+    <!-- URL取り込み -->
+    <div class="tab-content" id="tab-url">
+      <div class="url-import-box">
+        <div class="url-import-icon">
+          <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </div>
+        <p class="url-import-label">Lark Drive や動画URLを貼り付け</p>
+        <div class="url-input-row">
+          <input type="url" id="urlInput" class="url-input" placeholder="https://...feishu.cn/file/... または直リンク">
+          <button id="urlImportBtn" class="btn-import">取り込み</button>
+        </div>
+        <p class="url-import-hint">Lark Drive は「リンクをコピー」で取得した共有リンクを貼り付けてください</p>
+      </div>
+    </div>
 
     <div class="progress-list" id="progressList"></div>
 

@@ -330,9 +330,121 @@ input[type="file"] { display: none; }
   font-size: 0.78rem;
 }
 
+/* ── Tab Bar ── */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  margin-bottom: 16px;
+}
+.tab {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── URL Import ── */
+.url-import-box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px 24px;
+  text-align: center;
+  background: var(--surface);
+}
+.url-import-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: rgba(108, 92, 231, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.url-import-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: var(--accent);
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.url-import-label {
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.url-input-row {
+  display: flex;
+  gap: 8px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.url-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.url-input:focus {
+  border-color: var(--accent);
+}
+.url-input::placeholder {
+  color: var(--text-muted);
+}
+.btn-import {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.btn-import:hover { opacity: 0.85; }
+.btn-import:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.url-import-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
 /* ── Mobile ── */
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   body { padding: 24px 12px 60px; }
   .drop-zone { padding: 36px 16px; }
   .file-card { padding: 10px 12px; }
+  .url-input-row { flex-direction: column; }
+  .btn-import { width: 100%; }
+  .tab { font-size: 0.8rem; padding: 8px 12px; }
 }
