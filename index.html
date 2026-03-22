@@ -166,11 +166,25 @@
         </div>
       </div>
 
+      <!-- 自動字幕生成 -->
+      <div class="editor-block">
+        <div class="editor-block-title">自動字幕生成（Whisper AI）</div>
+        <p class="section-desc">動画の音声をAIが文字起こしし、テロップを自動生成します</p>
+        <button class="btn-export" id="btnAutoSubtitle" style="background:var(--accent)">自動字幕生成</button>
+        <div id="autoSubProgress" style="display:none; margin-top:10px;">
+          <div class="bar-wrap"><div class="bar" id="autoSubBar"></div></div>
+          <div class="export-status" id="autoSubStatus">文字起こし中...</div>
+        </div>
+      </div>
+
       <!-- テロップ -->
       <div class="editor-block">
         <div class="editor-block-title">テロップ</div>
         <div id="subtitleList" class="subtitle-list"></div>
-        <button class="btn-add-sub" id="btnAddSubtitle">+ テロップを追加</button>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn-add-sub" id="btnAddSubtitle" style="flex:1">+ テロップを追加</button>
+          <button class="btn-add-sub" id="btnDownloadSRT" style="flex:0 0 auto;width:140px">SRTダウンロード</button>
+        </div>
       </div>
 
       <!-- 書き出し -->

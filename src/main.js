@@ -1,6 +1,7 @@
 import { upload } from "@vercel/blob/client";
 import { generateConcepts, PLATFORM_SPECS } from "./concepts.js";
 import { GENRES, buildConceptFromPattern, adjustPatternByReference } from "./patterns.js";
+import { generateSubtitles, exportSRT } from "./subtitles.js";
 import "./style.css";
 
 // ── DOM Elements ──
@@ -1058,6 +1059,98 @@ function addSubtitleRow(text, start, end, position) {
   row.appendChild(removeBtn);
   subtitleList.appendChild(row);
 }
+
+// ── Auto Subtitle Generation ──
+const btnAutoSubtitle = document.getElementById("btnAutoSubtitle");
+const autoSubProgress = document.getElementById("autoSubProgress");
+const autoSubBar = document.getElementById("autoSubBar");
+const autoSubStatus = document.getElementById("autoSubStatus");
+const btnDownloadSRT = document.getElementById("btnDownloadSRT");
+
+let currentSubtitles = [];
+
+btnAutoSubtitle.addEventListener("click", async () => {
+  if (!editorConcept || !editorConcept.materials[0]) return;
+
+  btnAutoSubtitle.disabled = true;
+  autoSubProgress.style.display = "block";
+  autoSubBar.style.width = "20%";
+  autoSubStatus.textContent = "音声を文字起こし中...（数十秒かかります）";
+
+  const progressTimer = setInterval(() => {
+    const w = parseFloat(autoSubBar.style.width);
+    if (w < 85) autoSubBar.style.width = w + 3 + "%";
+  }, 1000);
+
+  try {
+    const res = await fetch("/api/transcribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoUrl: editorConcept.materials[0].url }),
+    });
+
+    clearInterval(progressTimer);
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || "文字起こしに失敗しました");
+
+    autoSubBar.style.width = "90%";
+    autoSubStatus.textContent = "テロップを生成中...";
+
+    // Generate subtitles from Whisper segments
+    const subtitles = generateSubtitles(data.segments || []);
+    currentSubtitles = subtitles;
+
+    // Fill subtitle list
+    subtitleList.innerHTML = "";
+    subtitleCounter = 0;
+    for (const sub of subtitles) {
+      const text = sub.lines ? sub.lines.join("\n") : sub.text;
+      addSubtitleRow(text, sub.startTime, sub.endTime, sub.position || "bottom");
+    }
+
+    autoSubBar.style.width = "100%";
+    autoSubBar.classList.add("bar-done");
+    autoSubStatus.textContent = `完了！${subtitles.length}件のテロップを生成しました`;
+  } catch (err) {
+    clearInterval(progressTimer);
+    autoSubBar.style.width = "100%";
+    autoSubBar.style.background = "var(--red)";
+    autoSubStatus.textContent = "エラー: " + err.message;
+  } finally {
+    btnAutoSubtitle.disabled = false;
+  }
+});
+
+// SRT Download
+btnDownloadSRT.addEventListener("click", () => {
+  // Gather current subtitles from UI
+  const subs = [];
+  subtitleList.querySelectorAll(".subtitle-row").forEach((row) => {
+    const text = row.querySelector(".sub-text").value.trim();
+    if (!text) return;
+    subs.push({
+      text,
+      lines: text.split("\n"),
+      startTime: parseFloat(row.querySelectorAll(".sub-time")[0].value) || 0,
+      endTime: parseFloat(row.querySelectorAll(".sub-time")[1].value) || 0,
+    });
+  });
+
+  if (subs.length === 0) {
+    alert("テロップがありません。先に自動字幕生成を実行してください。");
+    return;
+  }
+
+  const srt = exportSRT(subs);
+  const blob = new Blob([srt], { type: "text/srt;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `subtitles_${Date.now()}.srt`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
 
 // Export via Cloudinary API
 btnExport.addEventListener("click", async () => {

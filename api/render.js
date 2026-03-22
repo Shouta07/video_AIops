@@ -11,10 +11,10 @@ export default async function handler(request, response) {
     return response.status(405).json({ error: "Method not allowed" });
   }
 
-  // Check Cloudinary config
   if (!process.env.CLOUDINARY_CLOUD_NAME) {
     return response.status(500).json({
-      error: "Cloudinary が未設定です。環境変数 CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET を設定してください",
+      error:
+        "Cloudinary が未設定です。環境変数を設定してください",
     });
   }
 
@@ -24,7 +24,6 @@ export default async function handler(request, response) {
     height = 1920,
     startTime = 0,
     endTime = null,
-    subtitles = [],
   } = request.body || {};
 
   if (!videoUrl) {
@@ -32,10 +31,10 @@ export default async function handler(request, response) {
   }
 
   try {
-    // Build transformation chain
+    // Build transformation: trim + resize + no-audio
     const transformations = [];
 
-    // 1. Trim
+    // Trim
     const trimOpts = {};
     if (startTime > 0) trimOpts.start_offset = String(startTime);
     if (endTime !== null && endTime > startTime) {
@@ -45,7 +44,7 @@ export default async function handler(request, response) {
       transformations.push(trimOpts);
     }
 
-    // 2. Resize to platform specs (fill with padding)
+    // Resize
     transformations.push({
       width,
       height,
@@ -54,45 +53,12 @@ export default async function handler(request, response) {
       gravity: "center",
     });
 
-    // 3. Remove audio
+    // Remove audio
     transformations.push({ flags: "no_audio" });
 
-    // 4. Add text overlays (subtitles)
-    for (const sub of subtitles) {
-      if (!sub.text || !sub.text.trim()) continue;
-
-      const gravity = sub.position === "top" ? "north"
-        : sub.position === "center" ? "center"
-        : "south";
-
-      const yOffset = sub.position === "center" ? 0 : 60;
-
-      const overlay = {
-        overlay: {
-          font_family: "Noto Sans JP",
-          font_size: 42,
-          font_weight: "bold",
-          text: sub.text.trim(),
-        },
-        gravity,
-        y: yOffset,
-        color: "white",
-        effect: "outline:3:black",
-      };
-
-      // Time-based visibility
-      if (sub.startTime !== undefined && sub.endTime !== undefined) {
-        overlay.start_offset = String(sub.startTime);
-        overlay.end_offset = String(sub.endTime);
-      }
-
-      transformations.push(overlay);
-    }
-
-    // 5. Output format
+    // Output format
     transformations.push({ format: "mp4", video_codec: "h264" });
 
-    // Upload remote video with eager transformation
     const result = await cloudinary.uploader.upload(videoUrl, {
       resource_type: "video",
       type: "upload",
@@ -102,7 +68,6 @@ export default async function handler(request, response) {
       timeout: 120000,
     });
 
-    // Get the transformed video URL
     const outputUrl =
       result.eager && result.eager[0]
         ? result.eager[0].secure_url
@@ -114,20 +79,12 @@ export default async function handler(request, response) {
       duration: result.duration,
       width: result.width,
       height: result.height,
-      format: result.format,
       bytes: result.eager?.[0]?.bytes || result.bytes,
     });
   } catch (error) {
     console.error("Render error:", error);
-
-    const msg = error.message || "動画の処理に失敗しました";
-    // Provide helpful error messages
-    if (msg.includes("Invalid") || msg.includes("401")) {
-      return response.status(500).json({
-        error: "Cloudinary の認証に失敗しました。API キーを確認してください",
-      });
-    }
-
-    return response.status(500).json({ error: msg });
+    return response
+      .status(500)
+      .json({ error: error.message || "動画の処理に失敗しました" });
   }
 }
