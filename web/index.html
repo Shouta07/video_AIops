@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Ops - アップロード</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0a0a0a; color: #e0e0e0;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 40px 20px;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: 8px; color: #fff; }
+  .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 32px; }
+
+  .drop-zone {
+    width: 100%; max-width: 600px;
+    border: 2px dashed #333; border-radius: 16px;
+    padding: 60px 20px; text-align: center;
+    cursor: pointer; transition: all 0.2s;
+    background: #111;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: #6c5ce7; background: #1a1530;
+  }
+  .drop-zone .icon { font-size: 3rem; margin-bottom: 12px; }
+  .drop-zone p { color: #aaa; font-size: 0.95rem; }
+  .drop-zone .formats { color: #666; font-size: 0.8rem; margin-top: 8px; }
+
+  input[type="file"] { display: none; }
+
+  .progress-area { width: 100%; max-width: 600px; margin-top: 24px; }
+  .progress-item {
+    background: #161616; border-radius: 10px; padding: 14px 18px;
+    margin-bottom: 10px; display: flex; align-items: center; gap: 12px;
+  }
+  .progress-item .name { flex: 1; font-size: 0.9rem; word-break: break-all; }
+  .progress-item .size { color: #888; font-size: 0.8rem; white-space: nowrap; }
+  .progress-item .status { font-size: 0.85rem; white-space: nowrap; }
+  .status.uploading { color: #fdcb6e; }
+  .status.done { color: #00b894; }
+  .status.error { color: #d63031; }
+
+  .bar-wrap {
+    width: 100%; height: 4px; background: #222; border-radius: 2px; margin-top: 8px;
+  }
+  .bar {
+    height: 100%; background: #6c5ce7; border-radius: 2px;
+    transition: width 0.2s; width: 0%;
+  }
+
+  .file-list { width: 100%; max-width: 600px; margin-top: 32px; }
+  .file-list h2 { font-size: 1.1rem; margin-bottom: 12px; color: #fff; }
+  .file-item {
+    background: #161616; border-radius: 10px; padding: 12px 18px;
+    margin-bottom: 8px; display: flex; justify-content: space-between;
+    align-items: center;
+  }
+  .file-item .fname { font-size: 0.9rem; }
+  .file-item .fsize { color: #888; font-size: 0.8rem; }
+  .empty { color: #555; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<h1>Video Ops</h1>
+<p class="subtitle">動画ファイルをアップロード</p>
+
+<div class="drop-zone" id="dropZone">
+  <div class="icon">&#128249;</div>
+  <p>ここにドラッグ＆ドロップ<br>またはクリックして選択</p>
+  <p class="formats">MP4 / MOV / AVI / MKV / WebM</p>
+</div>
+<input type="file" id="fileInput" multiple accept=".mp4,.mov,.avi,.mkv,.webm,.m4v">
+
+<div class="progress-area" id="progressArea"></div>
+
+<div class="file-list" id="fileList">
+  <h2>アップロード済み</h2>
+  <div id="fileListBody"><p class="empty">ファイルなし</p></div>
+</div>
+
+<script>
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const progressArea = document.getElementById("progressArea");
+const fileListBody = document.getElementById("fileListBody");
+
+dropZone.addEventListener("click", () => fileInput.click());
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.classList.remove("dragover");
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener("change", () => { handleFiles(fileInput.files); fileInput.value = ""; });
+
+function handleFiles(files) {
+  for (const file of files) {
+    uploadFile(file);
+  }
+}
+
+function uploadFile(file) {
+  const item = document.createElement("div");
+  item.className = "progress-item";
+  item.innerHTML = `
+    <span class="name">${file.name}</span>
+    <span class="size">${(file.size/1024/1024).toFixed(1)} MB</span>
+    <span class="status uploading">アップロード中...</span>
+    <div class="bar-wrap"><div class="bar"></div></div>
+  `;
+  progressArea.prepend(item);
+  const bar = item.querySelector(".bar");
+  const status = item.querySelector(".status");
+
+  const fd = new FormData();
+  fd.append("files", file);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/upload");
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) bar.style.width = (e.loaded / e.total * 100) + "%";
+  };
+  xhr.onload = () => {
+    if (xhr.status === 200) {
+      status.textContent = "完了";
+      status.className = "status done";
+      bar.style.width = "100%";
+      loadFileList();
+    } else {
+      status.textContent = "エラー";
+      status.className = "status error";
+    }
+  };
+  xhr.onerror = () => { status.textContent = "エラー"; status.className = "status error"; };
+  xhr.send(fd);
+}
+
+function loadFileList() {
+  fetch("/files").then(r => r.json()).then(data => {
+    if (!data.files.length) {
+      fileListBody.innerHTML = '<p class="empty">ファイルなし</p>';
+      return;
+    }
+    fileListBody.innerHTML = data.files.map(f =>
+      `<div class="file-item"><span class="fname">${f.name}</span><span class="fsize">${f.size_mb} MB</span></div>`
+    ).join("");
+  });
+}
+
+loadFileList();
+</script>
+</body>
+</html>
