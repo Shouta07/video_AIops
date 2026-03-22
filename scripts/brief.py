@@ -409,11 +409,23 @@ def main():
     parser.add_argument("--theme", help="具体的なテーマ（例: 眉毛サロン体験）")
     parser.add_argument("--list", action="store_true", help="ジャンル・パターン一覧を表示")
     parser.add_argument("--save", action="store_true", help="ファイルに保存する")
+    parser.add_argument("--client", help="クライアントID（clients/{id}/ に保存）")
     args = parser.parse_args()
 
     if args.list:
         list_genres()
         return
+
+    # クライアントモード: プロフィールからジャンルを自動取得
+    if args.client:
+        profile_path = os.path.join("clients", args.client, "profile.json")
+        if os.path.exists(profile_path):
+            with open(profile_path, encoding="utf-8") as f:
+                profile = json.load(f)
+            if not args.genre:
+                args.genre = profile.get("genre", "beauty")
+        else:
+            print(f"  ⚠️  クライアント {args.client} が見つかりません")
 
     if not args.genre:
         print("❌ --genre を指定してください。一覧は --list で確認できます。")
@@ -422,10 +434,14 @@ def main():
     brief = generate_brief(args.genre, args.pattern, args.theme)
     print(brief)
 
-    if args.save:
+    if args.save or args.client:
         today = datetime.now().strftime("%Y-%m-%d")
-        save_path = f"reports/brief_{args.genre}_{today}.txt"
-        os.makedirs("reports", exist_ok=True)
+        if args.client:
+            reports_dir = os.path.join("clients", args.client, "reports")
+        else:
+            reports_dir = "reports"
+        os.makedirs(reports_dir, exist_ok=True)
+        save_path = os.path.join(reports_dir, f"brief_{args.genre}_{today}.txt")
         with open(save_path, "w", encoding="utf-8") as f:
             f.write(brief)
         print(f"\n  保存しました: {save_path}")

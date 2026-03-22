@@ -177,7 +177,7 @@ def analyze_all(videos):
 #  Step 2: GPT で投稿プランを生成
 # ═══════════════════════════════════════════════════
 
-def generate_post_plan(catalog, genre, recycle=False):
+def generate_post_plan(catalog, genre, recycle=False, profile=None):
     """GPTで素材を仕分け → 投稿プランを生成"""
     print(f"\n🤖 投稿プランを生成中...")
 
@@ -202,6 +202,27 @@ def generate_post_plan(catalog, genre, recycle=False):
             "transcript": c.get("transcript", "")[:200],  # 先頭200文字
         })
 
+    # クライアントブランド情報をプロンプトに注入
+    brand_instruction = ""
+    if profile:
+        brand = profile.get("brand", {})
+        fixed_tags = profile.get("hashtags_fixed", [])
+        ng_tags = profile.get("hashtags_ng", [])
+        ng_words = profile.get("ng_words", [])
+        brand_instruction = f"""
+
+## クライアントブランド設定（必ず反映すること）:
+- クライアント名: {profile.get('name', '')}
+- ターゲット層: {profile.get('target_audience', '')}
+- トーン・文体: {brand.get('tone', '')}
+- テロップメイン色: {brand.get('telop_color_main', 'white')}
+- テロップ強調色: {brand.get('telop_color_accent', 'yellow')}
+- テロップCTA色: {brand.get('telop_color_cta', '#FFB6C1')}
+- キャプションルール: {profile.get('caption_rules', '')}
+- 毎回つける固定ハッシュタグ: {' '.join(fixed_tags) if fixed_tags else 'なし'}
+- 使用禁止ハッシュタグ: {' '.join(ng_tags) if ng_tags else 'なし'}
+- NG表現（使ってはいけない言葉）: {', '.join(ng_words) if ng_words else 'なし'}"""
+
     recycle_instruction = ""
     if recycle:
         recycle_instruction = """
@@ -219,6 +240,7 @@ def generate_post_plan(catalog, genre, recycle=False):
 {json.dumps(material_summary, ensure_ascii=False, indent=2)}
 
 ## ジャンル: {genre}
+{brand_instruction}
 
 ## ルール
 
@@ -455,11 +477,11 @@ def build_post_video(post, catalog, font, output_dir="output/tiktok"):
 #  Step 4: レポート生成
 # ═══════════════════════════════════════════════════
 
-def generate_report(plan, catalog, outputs, genre):
+def generate_report(plan, catalog, outputs, genre, reports_dir="reports"):
     """投稿プラン全体のレポートを生成"""
     today = datetime.now().strftime("%Y-%m-%d")
-    report_path = f"reports/plan_{today}.md"
-    os.makedirs("reports", exist_ok=True)
+    report_path = f"{reports_dir}/plan_{today}.md"
+    os.makedirs(reports_dir, exist_ok=True)
 
     lines = [
         f"# 投稿プラン {today}",
@@ -546,10 +568,11 @@ def generate_report(plan, catalog, outputs, genre):
 #  Step 5: プランJSONの保存（修正して再実行用）
 # ═══════════════════════════════════════════════════
 
-def save_plan_json(plan, catalog):
+def save_plan_json(plan, catalog, reports_dir="reports"):
     """プランをJSONで保存。手動で順序変更・テロップ修正して再実行可能"""
     today = datetime.now().strftime("%Y-%m-%d")
-    plan_path = f"reports/plan_{today}.json"
+    plan_path = f"{reports_dir}/plan_{today}.json"
+    os.makedirs(reports_dir, exist_ok=True)
 
     output = {
         "generated_at": datetime.now().isoformat(),
@@ -579,13 +602,31 @@ def main():
                         choices=["beauty", "food", "travel", "fitness", "business", "lifestyle", "education", "product"],
                         help="ジャンル（デフォルト: beauty）")
     parser.add_argument("--input-dir", default="input", help="素材フォルダ（デフォルト: input/）")
+    parser.add_argument("--client", help="クライアントID（clients/{id}/ のフォルダを使用）")
     parser.add_argument("--dry-run", action="store_true", help="プラン確認のみ（動画生成しない）")
     parser.add_argument("--recycle", action="store_true", help="素材リサイクル提案も生成")
     parser.add_argument("--plan-json", help="既存のプランJSONから動画を生成（プラン修正後の再実行用）")
     args = parser.parse_args()
 
+    # クライアントモード: パスとプロフィールを自動設定
+    client_profile = None
+    if args.client:
+        client_dir = os.path.join("clients", args.client)
+        profile_path = os.path.join(client_dir, "profile.json")
+        if os.path.exists(profile_path):
+            with open(profile_path, encoding="utf-8") as f:
+                client_profile = json.load(f)
+            args.input_dir = os.path.join(client_dir, "input")
+            args.genre = client_profile.get("genre", args.genre)
+        else:
+            print(f"  ⚠️  クライアント {args.client} のプロフィールが見つかりません。")
+            print(f"  python ops.py でクライアントを登録してください。")
+            sys.exit(1)
+
     print("=" * 55)
     print("  Video AIops - 投稿プランナー")
+    if client_profile:
+        print(f"  クライアント: {client_profile.get('name', args.client)}")
     print("=" * 55)
 
     # 既存プランからの再実行
@@ -618,7 +659,7 @@ def main():
             sys.exit(1)
 
         # Step 2: 投稿プラン生成
-        plan = generate_post_plan(catalog, args.genre, recycle=args.recycle)
+        plan = generate_post_plan(catalog, args.genre, recycle=args.recycle, profile=client_profile)
 
     posts = plan.get("posts", [])
     print(f"\n  → {len(posts)}本の投稿プランを生成")
@@ -638,14 +679,22 @@ def main():
         print()
     print("─" * 55)
 
+    # クライアント別ディレクトリ
+    if args.client:
+        output_dir = os.path.join("clients", args.client, "output")
+        reports_dir = os.path.join("clients", args.client, "reports")
+    else:
+        output_dir = "output/tiktok"
+        reports_dir = "reports"
+
     # プランJSON保存
-    plan_json_path = save_plan_json(plan, catalog)
+    plan_json_path = save_plan_json(plan, catalog, reports_dir)
     print(f"\n  📋 プランJSON保存: {plan_json_path}")
     print(f"     → 順序変更やテロップ修正後、--plan-json で再実行可能")
 
     # dry-run ならここまで
     if args.dry_run:
-        report_path = generate_report(plan, catalog, {}, args.genre)
+        report_path = generate_report(plan, catalog, {}, args.genre, reports_dir)
         print(f"  📊 レポート: {report_path}")
         print(f"\n  （--dry-run のため動画生成はスキップ）")
         print(f"  動画を生成するには:")
@@ -662,7 +711,7 @@ def main():
     for post in posts:
         pn = post["post_number"]
         print(f"\n  投稿{pn}: {post.get('title', '')}")
-        result = build_post_video(post, catalog, font)
+        result = build_post_video(post, catalog, font, output_dir)
         if result:
             outputs[pn] = result
             print(f"    ✅ {result}")
@@ -670,7 +719,7 @@ def main():
             print(f"    ❌ 生成失敗")
 
     # Step 4: レポート生成
-    report_path = generate_report(plan, catalog, outputs, args.genre)
+    report_path = generate_report(plan, catalog, outputs, args.genre, reports_dir)
 
     # 完了サマリー
     print("\n" + "=" * 55)
