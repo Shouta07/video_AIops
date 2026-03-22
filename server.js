@@ -4,7 +4,7 @@ import cors from "cors";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import OpenAI from "openai";
+import { execFile } from "child_process";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 
@@ -82,13 +82,8 @@ app.post("/api/delete", (req, res) => {
   res.json({ deleted: true });
 });
 
-// ── Whisper Transcription ──
+// ── Whisper Transcription (ローカル / API 両対応) ──
 app.post("/api/transcribe", async (req, res) => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "OPENAI_API_KEY が未設定です" });
-  }
-
   const { filename } = req.body || {};
   if (!filename) return res.status(400).json({ error: "filename required" });
 
@@ -97,7 +92,56 @@ app.post("/api/transcribe", async (req, res) => {
     return res.status(404).json({ error: "ファイルが見つかりません" });
   }
 
+  // Try local Whisper first (free), fall back to OpenAI API
+  const venvPython = path.join(__dirname, "venv", "bin", "python3");
+  const venvPythonWin = path.join(__dirname, "venv", "Scripts", "python.exe");
+  const pythonPath = fs.existsSync(venvPython)
+    ? venvPython
+    : fs.existsSync(venvPythonWin)
+      ? venvPythonWin
+      : null;
+
+  if (pythonPath) {
+    // ── Local Whisper (free) ──
+    console.log("Using local Whisper...");
+    const scriptPath = path.join(__dirname, "scripts", "transcribe.py");
+
+    const child = execFile(
+      pythonPath,
+      [scriptPath, filepath],
+      { maxBuffer: 50 * 1024 * 1024, timeout: 600000 },
+      (error, stdout, stderr) => {
+        if (stderr) console.log("Whisper:", stderr.trim());
+        if (error) {
+          console.error("Whisper error:", error.message);
+          return res.status(500).json({
+            error: "ローカル Whisper でエラーが発生しました: " + error.message,
+          });
+        }
+        try {
+          const result = JSON.parse(stdout);
+          if (result.error) {
+            return res.status(500).json({ error: result.error });
+          }
+          return res.json(result);
+        } catch {
+          return res.status(500).json({ error: "Whisper の出力解析に失敗" });
+        }
+      }
+    );
+    return;
+  }
+
+  // ── OpenAI API fallback (if OPENAI_API_KEY is set) ──
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({
+      error: "Whisper が利用できません。setup.sh を実行するか、OPENAI_API_KEY を設定してください",
+    });
+  }
+
   try {
+    const { default: OpenAI } = await import("openai");
     const openai = new OpenAI({ apiKey });
     const file = fs.createReadStream(filepath);
 
@@ -112,10 +156,7 @@ app.post("/api/transcribe", async (req, res) => {
     res.json({
       text: transcription.text,
       segments: (transcription.segments || []).map((s) => ({
-        id: s.id,
-        start: s.start,
-        end: s.end,
-        text: s.text,
+        id: s.id, start: s.start, end: s.end, text: s.text,
       })),
       words: transcription.words || [],
       duration: transcription.duration,

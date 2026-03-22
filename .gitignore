@@ -14,9 +14,11 @@ account.md
 *.MP4
 *.MOV
 
-# Node / Build
+# Node / Build / Python
 node_modules/
 dist/
+venv/
+uploads/
 .vercel/
 
 # OS
