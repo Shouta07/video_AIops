@@ -2,23 +2,21 @@
 #
 # run.sh - 素材を入れてダブルクリックするだけ
 #
-# input/ フォルダ内の動画ファイルを自動検出して
-# パイプラインを実行 → テロップ付き動画 + 投稿戦略レポートを生成
+# input/ の素材を全部解析 → AIが投稿プランを作成 → 動画生成 → レポート出力
 #
 # 使い方:
 #   1. input/ に動画ファイルを入れる
-#   2. このファイルをダブルクリック（または bash run.sh）
-#   3. output/ に完成動画、reports/ に投稿戦略が出力される
+#   2. bash run.sh（または chmod +x run.sh してダブルクリック）
+#   3. output/ に完成動画、reports/ に投稿プラン＆キャプションが出力される
 #
 
 set -e
 
-# スクリプトのあるディレクトリに移動
 cd "$(dirname "$0")"
 
 echo ""
 echo "=================================================="
-echo "  Video AIops - ワンクリック実行"
+echo "  Video AIops - 投稿プランナー"
 echo "=================================================="
 echo ""
 
@@ -43,13 +41,8 @@ if [ -z "$VIDEOS" ]; then
     exit 0
 fi
 
-# 動画ファイル一覧を表示
 COUNT=$(echo "$VIDEOS" | wc -l | tr -d ' ')
-echo "  ${COUNT}個の動画を検出しました:"
-echo ""
-echo "$VIDEOS" | while read -r f; do
-    echo "    - $(basename "$f")"
-done
+echo "  ${COUNT}個の素材を検出"
 echo ""
 
 # ジャンル選択
@@ -78,42 +71,32 @@ case "${GENRE_NUM:-1}" in
     *) GENRE="beauty" ;;
 esac
 
+# 素材リサイクル提案も出すか
+echo ""
+read -p "  素材リサイクル提案も出す？ (y/N): " RECYCLE
+RECYCLE_FLAG=""
+if [ "$RECYCLE" = "y" ] || [ "$RECYCLE" = "Y" ]; then
+    RECYCLE_FLAG="--recycle"
+fi
+
 echo ""
 echo "  ジャンル: $GENRE"
+echo "  実行します..."
 echo ""
 
-# 各動画に対してパイプラインを実行
-SUCCESS=0
-FAIL=0
+# プランナー実行
+python3 scripts/planner.py --genre "$GENRE" $RECYCLE_FLAG
 
-echo "$VIDEOS" | while read -r VIDEO; do
-    echo "=================================================="
-    echo "  処理中: $(basename "$VIDEO")"
-    echo "=================================================="
-
-    if python3 scripts/pipeline.py "$VIDEO" --genre "$GENRE"; then
-        SUCCESS=$((SUCCESS + 1))
-    else
-        echo "  ⚠️  エラーが発生しました: $(basename "$VIDEO")"
-        FAIL=$((FAIL + 1))
-    fi
-
-    echo ""
-done
-
-# 完了メッセージ
+echo ""
 echo "=================================================="
-echo "  全て完了!"
+echo "  次にやること:"
+echo "    1. output/tiktok/ の動画をスマホに送る"
+echo "    2. reports/plan_*.md からキャプションとハッシュタグをコピー"
+echo "    3. TikTokスタジオで予約投稿"
+echo "    4. BGMはTikTokアプリ内で追加"
 echo "=================================================="
 echo ""
-echo "  出力先:"
-echo "    動画:     output/tiktok/  output/reels/  output/shorts/"
-echo "    レポート:  reports/"
-echo ""
-echo "  次のステップ:"
-echo "    1. output/ の動画をスマホに送る"
-echo "    2. reports/ のレポートから投稿文とハッシュタグをコピー"
-echo "    3. TikTok / Instagram / YouTube に投稿!"
-echo ""
-echo "  ※ BGMはTikTokアプリ内で追加してください"
+echo "  プランを修正して再生成したい場合:"
+echo "    reports/plan_*.json を編集して:"
+echo "    python3 scripts/planner.py --plan-json reports/plan_YYYY-MM-DD.json"
 echo ""

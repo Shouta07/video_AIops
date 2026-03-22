@@ -9,7 +9,9 @@
     "start": "node server.js",
     "studio": "npx remotion studio remotion/index.ts",
     "render": "node render.mjs",
-    "pipeline": "python scripts/pipeline.py"
+    "pipeline": "python scripts/pipeline.py",
+    "plan": "python scripts/planner.py",
+    "brief": "python scripts/brief.py"
   },
   "dependencies": {
     "@remotion/bundler": "^4.0.438",
