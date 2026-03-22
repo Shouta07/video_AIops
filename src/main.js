@@ -1,5 +1,6 @@
 import { upload } from "@vercel/blob/client";
 import { generateConcepts, PLATFORM_SPECS } from "./concepts.js";
+import { GENRES, buildConceptFromPattern, adjustPatternByReference } from "./patterns.js";
 import { editVideo } from "./editor.js";
 import "./style.css";
 
@@ -477,10 +478,11 @@ async function generateReport() {
 
     renderReport(results);
 
-    // Show concept proposals after analysis
+    // Show pattern selection after analysis
     const validResults = results.filter((r) => !r.error);
     if (validResults.length > 0) {
-      showConceptProposals(validResults);
+      currentAnalysisResults = validResults;
+      showPatternSelection();
     }
   } catch {
     reportBody.innerHTML = '<div class="analyze-loading">レポート生成に失敗しました</div>';
@@ -588,6 +590,155 @@ function formatDuration(seconds) {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return m + ":" + s.toString().padStart(2, "0");
+}
+
+// ── Pattern Selection (STEP 2) ──
+const patternSection = document.getElementById("patternSection");
+const platformSelect = document.getElementById("platformSelect");
+const genreSelect = document.getElementById("genreSelect");
+const refVideoUrl = document.getElementById("refVideoUrl");
+const btnAnalyzeRef = document.getElementById("btnAnalyzeRef");
+const refResult = document.getElementById("refResult");
+const patternListBlock = document.getElementById("patternListBlock");
+const patternList = document.getElementById("patternList");
+const patternDesc = document.getElementById("patternDesc");
+
+let selectedPlatform = "tiktok";
+let selectedGenre = null;
+let refVideoDuration = null;
+
+function showPatternSelection() {
+  patternSection.style.display = "block";
+  patternSection.scrollIntoView({ behavior: "smooth" });
+
+  // Render platform buttons
+  const platforms = [
+    { id: "tiktok", name: "TikTok" },
+    { id: "reels", name: "Reels" },
+    { id: "shorts", name: "Shorts" },
+    { id: "youtube", name: "YouTube" },
+  ];
+  platformSelect.innerHTML = "";
+  for (const p of platforms) {
+    const btn = document.createElement("button");
+    btn.className = "platform-btn" + (p.id === selectedPlatform ? " active" : "");
+    btn.textContent = p.name;
+    btn.addEventListener("click", () => {
+      selectedPlatform = p.id;
+      platformSelect.querySelectorAll(".platform-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      if (selectedGenre) showPatterns();
+    });
+    platformSelect.appendChild(btn);
+  }
+
+  // Render genre buttons
+  genreSelect.innerHTML = "";
+  for (const g of GENRES) {
+    const btn = document.createElement("button");
+    btn.className = "genre-btn";
+    btn.textContent = `${g.icon} ${g.name}`;
+    btn.addEventListener("click", () => {
+      selectedGenre = g.id;
+      genreSelect.querySelectorAll(".genre-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      showPatterns();
+    });
+    genreSelect.appendChild(btn);
+  }
+}
+
+// Reference video analysis
+btnAnalyzeRef.addEventListener("click", async () => {
+  const url = refVideoUrl.value.trim();
+  if (!url) return;
+
+  btnAnalyzeRef.disabled = true;
+  btnAnalyzeRef.textContent = "解析中...";
+  refResult.style.display = "none";
+  refVideoDuration = null;
+
+  try {
+    const duration = await analyzeReferenceVideo(url);
+    refVideoDuration = duration;
+    refResult.style.display = "block";
+    refResult.innerHTML = `
+      <span class="ref-tag">参考動画</span>
+      尺: ${formatDuration(duration)} — この尺に合わせてパターンを調整します
+    `;
+    if (selectedGenre) showPatterns();
+  } catch {
+    refResult.style.display = "block";
+    refResult.textContent = "この動画は直接解析できません。尺だけ手動入力もできます。";
+  } finally {
+    btnAnalyzeRef.disabled = false;
+    btnAnalyzeRef.textContent = "解析";
+  }
+});
+
+function analyzeReferenceVideo(url) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.crossOrigin = "anonymous";
+    video.muted = true;
+    video.addEventListener("loadedmetadata", () => {
+      resolve(video.duration);
+      video.src = "";
+    });
+    video.addEventListener("error", () => reject(new Error("Load failed")));
+    video.src = url;
+  });
+}
+
+function showPatterns() {
+  const genre = GENRES.find((g) => g.id === selectedGenre);
+  if (!genre) return;
+
+  patternListBlock.style.display = "block";
+  patternDesc.textContent = `${genre.icon} ${genre.name} のバズパターン（${genre.patterns.length}種類）`;
+
+  patternList.innerHTML = "";
+  for (const pattern of genre.patterns) {
+    let concept = buildConceptFromPattern(
+      selectedGenre,
+      pattern.id,
+      currentAnalysisResults || [],
+      selectedPlatform
+    );
+    if (!concept) continue;
+
+    // Adjust by reference video duration
+    if (refVideoDuration) {
+      concept = adjustPatternByReference(concept, refVideoDuration);
+    }
+
+    const card = createConceptCard(concept);
+
+    // Add tips section
+    if (concept.tips && concept.tips.length > 0) {
+      const tipsDiv = document.createElement("div");
+      tipsDiv.className = "concept-tips";
+      const tipsTitle = document.createElement("div");
+      tipsTitle.className = "concept-tips-title";
+      tipsTitle.textContent = "バズるためのポイント";
+      tipsDiv.appendChild(tipsTitle);
+      const ul = document.createElement("ul");
+      for (const tip of concept.tips) {
+        const li = document.createElement("li");
+        li.textContent = tip;
+        ul.appendChild(li);
+      }
+      tipsDiv.appendChild(ul);
+      // Insert before approve button
+      const approveRow = card.querySelector(".concept-approve-row");
+      card.insertBefore(tipsDiv, approveRow);
+    }
+
+    patternList.appendChild(card);
+  }
+
+  patternListBlock.scrollIntoView({ behavior: "smooth" });
 }
 
 // ── Concept Proposal ──
@@ -833,10 +984,21 @@ function openEditor(concept) {
     `${concept.platform} / ${platformSpec.resolution.w}x${platformSpec.resolution.h} ` +
     `(${concept.aspect}) / 無音 / MP4`;
 
-  // Clear subtitles and add a default one
+  // Pre-fill subtitles from pattern structure
   subtitleList.innerHTML = "";
   subtitleCounter = 0;
-  addSubtitleRow("", 0, concept.targetDuration, "bottom");
+  if (concept.rawStructure && concept.rawStructure.length > 0) {
+    for (const step of concept.rawStructure) {
+      addSubtitleRow(
+        step.note || step.name,
+        step.start,
+        step.end,
+        step.position || "bottom"
+      );
+    }
+  } else {
+    addSubtitleRow("", 0, concept.targetDuration, "bottom");
+  }
 
   editorSection.scrollIntoView({ behavior: "smooth" });
 }

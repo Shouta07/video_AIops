@@ -622,6 +622,92 @@ input[type="file"] { display: none; }
   margin-top: 2px;
 }
 
+/* ── Step Badge ── */
+.step-badge {
+  background: rgba(108, 92, 231, 0.1);
+  color: var(--accent);
+  border-color: rgba(108, 92, 231, 0.2);
+}
+
+/* ── Platform & Genre Select ── */
+.platform-select, .genre-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.platform-btn, .genre-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.platform-btn:hover, .genre-btn:hover {
+  border-color: #444;
+  color: var(--text);
+}
+.platform-btn.active {
+  border-color: var(--accent);
+  background: rgba(108, 92, 231, 0.1);
+  color: var(--accent);
+  font-weight: 600;
+}
+.genre-btn.active {
+  border-color: var(--accent);
+  background: rgba(108, 92, 231, 0.1);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Reference Video Result ── */
+.ref-result {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+.ref-result .ref-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: rgba(0,184,148,0.1);
+  color: var(--green);
+  margin-right: 6px;
+}
+
+/* ── Pattern Tips ── */
+.concept-tips {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(253, 203, 110, 0.06);
+  border: 1px solid rgba(253, 203, 110, 0.15);
+  border-radius: 8px;
+}
+.concept-tips-title {
+  font-size: 0.73rem;
+  color: var(--yellow);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.concept-tips ul {
+  margin: 0;
+  padding-left: 16px;
+}
+.concept-tips li {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
 /* ── Concept Proposal ── */
 .section-desc {
   font-size: 0.8rem;

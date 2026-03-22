@@ -88,14 +88,54 @@
     </div>
   </div>
 
-  <!-- コンセプト提案セクション -->
+  <!-- ステップ2: ジャンル・プラットフォーム・パターン選択 -->
+  <div class="container" id="patternSection" style="display:none; margin-top:24px;">
+    <div class="file-section">
+      <div class="file-section-header">
+        <h2>編集設定</h2>
+        <span class="badge step-badge">STEP 2</span>
+      </div>
+
+      <!-- プラットフォーム選択 -->
+      <div class="editor-block">
+        <div class="editor-block-title">投稿先プラットフォーム</div>
+        <div class="platform-select" id="platformSelect"></div>
+      </div>
+
+      <!-- ジャンル選択 -->
+      <div class="editor-block">
+        <div class="editor-block-title">ジャンル</div>
+        <div class="genre-select" id="genreSelect"></div>
+      </div>
+
+      <!-- 参考動画URL -->
+      <div class="editor-block">
+        <div class="editor-block-title">参考動画（任意）</div>
+        <p class="section-desc">バズっている動画のURLを貼ると、その尺・テンポに合わせてコンセプトを調整します</p>
+        <div class="url-input-row">
+          <input type="url" id="refVideoUrl" class="url-input" placeholder="https://www.tiktok.com/... or 動画ファイルURL">
+          <button class="btn-import" id="btnAnalyzeRef">解析</button>
+        </div>
+        <div id="refResult" class="ref-result" style="display:none"></div>
+      </div>
+
+      <!-- パターン選択 -->
+      <div class="editor-block" id="patternListBlock" style="display:none">
+        <div class="editor-block-title">バズパターン</div>
+        <p class="section-desc" id="patternDesc"></p>
+        <div id="patternList" class="concept-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- コンセプト提案セクション（パターンベース） -->
   <div class="container" id="conceptSection" style="display:none; margin-top:24px;">
     <div class="file-section">
       <div class="file-section-header">
-        <h2>編集コンセプト提案</h2>
+        <h2>編集コンセプト</h2>
         <span id="conceptStatus" class="badge" style="display:none"></span>
       </div>
-      <p class="section-desc" id="conceptDesc">素材に合った編集プランを提案します。承認すると編集ステップに進みます。</p>
+      <p class="section-desc" id="conceptDesc"></p>
       <div id="conceptGrid" class="concept-grid"></div>
     </div>
   </div>
