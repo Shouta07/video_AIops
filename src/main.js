@@ -1,4 +1,3 @@
-import { upload } from "@vercel/blob/client";
 import { generateConcepts, PLATFORM_SPECS } from "./concepts.js";
 import { GENRES, buildConceptFromPattern, adjustPatternByReference } from "./patterns.js";
 import { generateSubtitles, exportSRT } from "./subtitles.js";
@@ -57,7 +56,7 @@ function handleFiles(files) {
   }
 }
 
-// ── File Upload ──
+// ── File Upload (local server) ──
 async function uploadFile(file) {
   const sizeMB = (file.size / 1024 / 1024).toFixed(1);
 
@@ -69,13 +68,27 @@ async function uploadFile(file) {
   const meta = item.querySelector(".meta");
 
   try {
-    await upload("videos/" + file.name, file, {
-      access: "public",
-      handleUploadUrl: "/api/upload",
-      onUploadProgress: ({ percentage }) => {
-        bar.style.width = percentage + "%";
-      },
+    const formData = new FormData();
+    formData.append("files", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload");
+
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) {
+        bar.style.width = Math.round((e.loaded / e.total) * 100) + "%";
+      }
     });
+
+    await new Promise((resolve, reject) => {
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(xhr.responseText || "アップロード失敗"));
+      };
+      xhr.onerror = () => reject(new Error("ネットワークエラー"));
+      xhr.send(formData);
+    });
+
     status.textContent = "完了";
     status.className = "status status-done";
     bar.style.width = "100%";
@@ -87,7 +100,6 @@ async function uploadFile(file) {
     status.textContent = "エラー";
     status.className = "status status-error";
     meta.textContent = sizeMB + " MB - " + msg;
-    showSetupBannerIfNeeded(msg);
   }
 }
 
