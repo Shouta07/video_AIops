@@ -14,6 +14,10 @@ account.md
 *.MP4
 *.MOV
 
+# Node
+node_modules/
+.vercel/
+
 # OS
 .DS_Store
 Thumbs.db
