@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Ops</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+</head>
+<body>
+
+  <div class="header">
+    <h1>Video Ops</h1>
+    <p>動画素材をアップロードして管理</p>
+  </div>
+
+  <div class="container">
+
+    <div id="setupBanner" class="setup-banner" style="display:none">
+      Vercel Blob Storage が未設定です。ダッシュボード →
+      <strong>Storage</strong> → <strong>Create Database</strong> →
+      <strong>Blob</strong> を作成してください。
+      環境変数 <code>BLOB_READ_WRITE_TOKEN</code> が自動で追加されます。
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="icon">
+        <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+      </div>
+      <div class="label">ここにドラッグ＆ドロップ、またはクリックして選択</div>
+      <div class="hint">MP4 / MOV / AVI / MKV / WebM（最大 500MB）</div>
+    </div>
+    <input type="file" id="fileInput" multiple accept=".mp4,.mov,.avi,.mkv,.webm,.m4v">
+
+    <div class="progress-list" id="progressList"></div>
+
+    <div class="file-section">
+      <div class="file-section-header">
+        <h2>アップロード済み</h2>
+        <span id="fileCount" class="badge" style="display:none"></span>
+      </div>
+      <div class="file-grid" id="fileGrid">
+        <div class="loading">読み込み中...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

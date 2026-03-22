@@ -14,8 +14,9 @@ account.md
 *.MP4
 *.MOV
 
-# Node
+# Node / Build
 node_modules/
+dist/
 .vercel/
 
 # OS
