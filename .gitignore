@@ -4,7 +4,8 @@ output/
 reports/
 clients/*/input/
 clients/*/output/
-clients/*/reports/
+clients/*/reports/*.json
+clients/*/reports/*.txt
 clients/*/templates/
 captions/
 
