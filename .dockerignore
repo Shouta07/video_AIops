@@ -1,0 +1,10 @@
+node_modules
+dist
+uploads
+output
+.git
+.vercel
+*.mp4
+*.mov
+*.MP4
+*.MOV
