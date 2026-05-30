@@ -3,200 +3,289 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Video Ops</title>
+  <title>Video AIops</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 </head>
 <body>
 
-  <div class="header">
-    <h1>Video Ops</h1>
-    <p>動画素材をアップロードして管理</p>
-  </div>
-
-  <div class="container">
-
-    <div id="setupBanner" class="setup-banner" style="display:none"></div>
-
-    <div class="drop-zone" id="dropZone">
-      <div class="icon">
-        <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-      </div>
-      <div class="label">ここにドラッグ＆ドロップ、またはクリックして選択</div>
-      <div class="hint">MP4 / MOV / AVI / MKV / WebM（最大 500MB）</div>
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">V</div>
+      <span>Video AIops</span>
     </div>
-    <input type="file" id="fileInput" multiple accept=".mp4,.mov,.avi,.mkv,.webm,.m4v">
+    <div class="nav-section">メイン</div>
+    <a class="nav-item active" data-page="dashboard">
+      <span class="nav-icon">📊</span> ダッシュボード
+    </a>
+    <a class="nav-item" data-page="upload">
+      <span class="nav-icon">📤</span> 素材アップロード
+    </a>
+    <a class="nav-item" data-page="planner">
+      <span class="nav-icon">📋</span> 投稿プラン
+    </a>
 
-    <div class="progress-list" id="progressList"></div>
+    <div class="nav-section">制作</div>
+    <a class="nav-item" data-page="script">
+      <span class="nav-icon">📝</span> 台本作成
+    </a>
+    <a class="nav-item" data-page="reel">
+      <span class="nav-icon">🎬</span> リール作成
+    </a>
+    <a class="nav-item" data-page="hook">
+      <span class="nav-icon">🎯</span> フック最適化
+    </a>
 
-    <div class="file-section">
-      <div class="file-section-header">
+    <div class="nav-section">分析</div>
+    <a class="nav-item" data-page="hypothesis">
+      <span class="nav-icon">🧪</span> 仮説スコア
+    </a>
+    <a class="nav-item" data-page="calendar">
+      <span class="nav-icon">📅</span> カレンダー
+    </a>
+    <a class="nav-item" data-page="funnel">
+      <span class="nav-icon">📈</span> ファネル分析
+    </a>
+
+    <div class="nav-section">管理</div>
+    <a class="nav-item" data-page="clients">
+      <span class="nav-icon">👤</span> クライアント
+    </a>
+    <a class="nav-item" data-page="buzz">
+      <span class="nav-icon">🔥</span> バズの型
+    </a>
+  </nav>
+
+  <main class="content">
+    <!-- ダッシュボード -->
+    <div class="page active" id="page-dashboard">
+      <h1>ダッシュボード</h1>
+      <div class="cards-grid">
+        <div class="stat-card">
+          <div class="stat-label">素材数</div>
+          <div class="stat-value" id="stat-materials">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">完成動画</div>
+          <div class="stat-value" id="stat-outputs">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">クライアント</div>
+          <div class="stat-value" id="stat-clients">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">バズの型</div>
+          <div class="stat-value" id="stat-templates">0</div>
+        </div>
+      </div>
+      <div class="section-card">
+        <h2>クイックアクション</h2>
+        <div class="action-grid">
+          <button class="action-btn" onclick="switchPage('upload')">📤 素材をアップロード</button>
+          <button class="action-btn" onclick="switchPage('script')">📝 台本を作成</button>
+          <button class="action-btn" onclick="switchPage('reel')">🎬 リールを作成</button>
+          <button class="action-btn" onclick="switchPage('planner')">📋 投稿プランを生成</button>
+        </div>
+      </div>
+      <div class="section-card">
+        <h2>最近のファイル</h2>
+        <div id="recent-files">読み込み中...</div>
+      </div>
+    </div>
+
+    <!-- 素材アップロード -->
+    <div class="page" id="page-upload">
+      <h1>素材アップロード</h1>
+      <div class="section-card">
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-icon">📤</div>
+          <p>ここにドラッグ＆ドロップ、またはクリックして選択</p>
+          <p class="hint">MP4 / MOV / AVI / MKV / WebM（最大 500MB）</p>
+        </div>
+        <input type="file" id="fileInput" multiple accept=".mp4,.mov,.avi,.mkv,.webm,.m4v" style="display:none">
+        <div id="uploadProgress"></div>
+      </div>
+      <div class="section-card">
         <h2>アップロード済み</h2>
-        <span id="fileCount" class="badge" style="display:none"></span>
-      </div>
-      <div class="file-grid" id="fileGrid">
-        <div class="loading">読み込み中...</div>
-      </div>
-      <!-- 結合ボタン -->
-      <div id="mergeBar" class="merge-bar" style="display:none">
-        <span id="mergeCount">0本選択中</span>
-        <button class="btn-export" id="btnMerge" style="padding:8px 20px;width:auto;">選択した動画を結合</button>
+        <div id="fileList">読み込み中...</div>
       </div>
     </div>
 
-  </div>
-
-  <!-- 解析モーダル -->
-  <div class="modal-overlay" id="analyzeModal">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="modalTitle">素材解析</h2>
-        <button class="modal-close" id="modalClose">&times;</button>
-      </div>
-      <div class="modal-body">
-        <video id="analyzeVideo" class="analyze-preview" preload="metadata" controls></video>
-        <div class="analyze-grid" id="analyzeGrid">
-          <div class="analyze-loading">解析中...</div>
+    <!-- 投稿プラン -->
+    <div class="page" id="page-planner">
+      <h1>投稿プラン</h1>
+      <div class="section-card">
+        <h2>新規プラン生成</h2>
+        <div class="form-row">
+          <label>ジャンル</label>
+          <select id="planGenre" class="input">
+            <option value="beauty">美容・コスメ</option>
+            <option value="food">料理・グルメ</option>
+            <option value="travel">旅行・Vlog</option>
+            <option value="fitness">筋トレ</option>
+            <option value="business">ビジネス</option>
+            <option value="lifestyle">ライフスタイル</option>
+            <option value="education">教育・解説</option>
+            <option value="product">商品紹介</option>
+          </select>
         </div>
-        <div class="analyze-actions">
-          <button class="btn-analyze" id="btnAnalyzeAll">全素材を一括解析</button>
+        <div class="form-row">
+          <label><input type="checkbox" id="planRecycle"> 素材リサイクル提案も出す</label>
+        </div>
+        <button class="btn-primary" id="btnGeneratePlan">投稿プランを生成</button>
+        <div id="planResult"></div>
+      </div>
+    </div>
+
+    <!-- 台本作成 -->
+    <div class="page" id="page-script">
+      <h1>台本作成</h1>
+      <div class="section-card">
+        <div class="form-row">
+          <label>テーマ</label>
+          <input type="text" id="scriptTheme" class="input" placeholder="例: 眉毛の描き方">
+        </div>
+        <div class="form-row">
+          <label>台本スタイル</label>
+          <select id="scriptStyle" class="input">
+            <option value="beforeafter">ビフォーアフター（30秒）</option>
+            <option value="howto">ハウツー（30秒）</option>
+            <option value="grwm">GRWM（45秒）</option>
+            <option value="compare">比較・検証（30秒）</option>
+            <option value="review">アイテムレビュー（30秒）</option>
+          </select>
+        </div>
+        <button class="btn-primary" id="btnGenerateScript">台本を生成</button>
+        <div id="scriptResult"></div>
+      </div>
+    </div>
+
+    <!-- リール作成 -->
+    <div class="page" id="page-reel">
+      <h1>リール作成</h1>
+      <div class="section-card">
+        <h2>His Recoveries リール</h2>
+        <div class="form-row">
+          <label>仮説</label>
+          <select id="reelHypothesis" class="input">
+            <option value="hygiene">清潔感</option>
+            <option value="aging_anxiety">加齢不安</option>
+            <option value="confidence">自信</option>
+            <option value="presence">第一印象</option>
+            <option value="recovery_story">回復体験</option>
+            <option value="loneliness">孤独</option>
+            <option value="self_investment">自己投資</option>
+            <option value="conditioning">コンディション</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>リール型</label>
+          <select id="reelType" class="input">
+            <option value="card">一言カード型（5-10秒）</option>
+            <option value="slide">3段階スライド型（15秒）</option>
+            <option value="question">問いかけ型（5-10秒）</option>
+          </select>
+        </div>
+        <button class="btn-primary" id="btnGenerateReel">スクリプト→リール生成</button>
+        <div id="reelResult"></div>
+      </div>
+    </div>
+
+    <!-- フック最適化 -->
+    <div class="page" id="page-hook">
+      <h1>フック最適化</h1>
+      <div class="section-card">
+        <p class="desc">冒頭2秒の離脱を防ぐ。素材から最もインパクトのあるシーンを検出し、3バージョンのフックテロップを自動生成。</p>
+        <div class="form-row">
+          <label>テーマ</label>
+          <input type="text" id="hookTheme" class="input" placeholder="例: 眉アート体験">
+        </div>
+        <div class="form-row">
+          <label>最大尺（秒）</label>
+          <input type="number" id="hookMaxDur" class="input" value="20" min="10" max="60">
+        </div>
+        <button class="btn-primary" id="btnOptimizeHook">フック最適化を実行</button>
+        <div id="hookResult"></div>
+      </div>
+    </div>
+
+    <!-- 仮説スコア -->
+    <div class="page" id="page-hypothesis">
+      <h1>仮説スコアボード</h1>
+      <div class="section-card">
+        <div id="hypothesisBoard">
+          <table class="data-table">
+            <thead>
+              <tr><th>#</th><th>仮説</th><th>インサイト</th><th>キーワード</th></tr>
+            </thead>
+            <tbody id="hypothesisBody"></tbody>
+          </table>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- ステップ2: ジャンル・プラットフォーム・パターン選択 -->
-  <div class="container" id="patternSection" style="display:none; margin-top:24px;">
-    <div class="file-section">
-      <div class="file-section-header">
-        <h2>編集設定</h2>
-        <span class="badge step-badge">STEP 2</span>
-      </div>
-
-      <!-- プラットフォーム選択 -->
-      <div class="editor-block">
-        <div class="editor-block-title">投稿先プラットフォーム</div>
-        <div class="platform-select" id="platformSelect"></div>
-      </div>
-
-      <!-- ジャンル選択 -->
-      <div class="editor-block">
-        <div class="editor-block-title">ジャンル</div>
-        <div class="genre-select" id="genreSelect"></div>
-      </div>
-
-      <!-- 参考動画URL -->
-      <div class="editor-block">
-        <div class="editor-block-title">参考動画（任意）</div>
-        <p class="section-desc">バズっている動画のURLを貼ると、その尺・テンポに合わせてコンセプトを調整します</p>
-        <div class="url-input-row">
-          <input type="url" id="refVideoUrl" class="url-input" placeholder="https://www.tiktok.com/... or 動画ファイルURL">
-          <button class="btn-import" id="btnAnalyzeRef">解析</button>
-        </div>
-        <div id="refResult" class="ref-result" style="display:none"></div>
-      </div>
-
-      <!-- パターン選択 -->
-      <div class="editor-block" id="patternListBlock" style="display:none">
-        <div class="editor-block-title">バズパターン</div>
-        <p class="section-desc" id="patternDesc"></p>
-        <div id="patternList" class="concept-grid"></div>
+    <!-- カレンダー -->
+    <div class="page" id="page-calendar">
+      <h1>コンテンツカレンダー</h1>
+      <div class="section-card">
+        <table class="data-table">
+          <thead>
+            <tr><th>曜日</th><th>Threads AM</th><th>Threads PM</th><th>Instagram</th><th>Web</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>月</td><td>清潔感</td><td>自信</td><td>リール</td><td>—</td></tr>
+            <tr><td>火</td><td>加齢不安</td><td>第一印象</td><td>ストーリーズ</td><td>記事公開</td></tr>
+            <tr><td>水</td><td>回復体験</td><td>孤独</td><td>リール</td><td>—</td></tr>
+            <tr><td>木</td><td>自己投資</td><td>コンディション</td><td>カルーセル</td><td>記事公開</td></tr>
+            <tr><td>金</td><td>Discovery</td><td>清潔感</td><td>リール</td><td>—</td></tr>
+            <tr><td>土</td><td>—</td><td>自信</td><td>ストーリーズ</td><td>—</td></tr>
+            <tr><td>日</td><td>—</td><td>—</td><td>—</td><td>週次レポート</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
-  </div>
 
-  <!-- コンセプト提案セクション（パターンベース） -->
-  <div class="container" id="conceptSection" style="display:none; margin-top:24px;">
-    <div class="file-section">
-      <div class="file-section-header">
-        <h2>編集コンセプト</h2>
-        <span id="conceptStatus" class="badge" style="display:none"></span>
-      </div>
-      <p class="section-desc" id="conceptDesc"></p>
-      <div id="conceptGrid" class="concept-grid"></div>
-    </div>
-  </div>
-
-  <!-- 承認済みコンセプト表示 -->
-  <div class="container" id="approvedSection" style="display:none; margin-top:24px;">
-    <div class="approved-banner" id="approvedBanner"></div>
-  </div>
-
-  <!-- 編集セクション -->
-  <div class="container" id="editorSection" style="display:none; margin-top:24px;">
-    <div class="file-section">
-      <div class="file-section-header">
-        <h2>動画編集</h2>
-      </div>
-
-      <!-- プレビュー -->
-      <div class="editor-preview-wrap">
-        <video id="editorPreview" class="editor-preview" controls></video>
-      </div>
-
-      <!-- トリム -->
-      <div class="editor-block">
-        <div class="editor-block-title">トリム範囲</div>
-        <div class="trim-row">
-          <label class="trim-label">開始 <input type="number" id="trimStart" class="trim-input" value="0" min="0" step="0.1"> 秒</label>
-          <label class="trim-label">終了 <input type="number" id="trimEnd" class="trim-input" value="0" min="0" step="0.1"> 秒</label>
-        </div>
-      </div>
-
-      <!-- 自動字幕生成 -->
-      <div class="editor-block">
-        <div class="editor-block-title">自動字幕生成（Whisper AI）</div>
-        <p class="section-desc">動画の音声をAIが文字起こしし、テロップを自動生成します</p>
-        <button class="btn-export" id="btnAutoSubtitle" style="background:var(--accent)">自動字幕生成</button>
-        <div id="autoSubProgress" style="display:none; margin-top:10px;">
-          <div class="bar-wrap"><div class="bar" id="autoSubBar"></div></div>
-          <div class="export-status" id="autoSubStatus">文字起こし中...</div>
-        </div>
-      </div>
-
-      <!-- テロップ -->
-      <div class="editor-block">
-        <div class="editor-block-title">テロップ</div>
-        <div id="subtitleList" class="subtitle-list"></div>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button class="btn-add-sub" id="btnAddSubtitle" style="flex:1">+ テロップを追加</button>
-          <button class="btn-add-sub" id="btnDownloadSRT" style="flex:0 0 auto;width:140px">SRTダウンロード</button>
-        </div>
-      </div>
-
-      <!-- 書き出し -->
-      <div class="editor-block">
-        <div class="editor-block-title">書き出し設定</div>
-        <div class="export-info" id="exportInfo"></div>
-        <button class="btn-export" id="btnExport">書き出し開始</button>
-        <div class="export-progress" id="exportProgress" style="display:none">
-          <div class="bar-wrap"><div class="bar" id="exportBar"></div></div>
-          <div class="export-status" id="exportStatus">準備中...</div>
-        </div>
-      </div>
-
-      <!-- ダウンロード -->
-      <div class="editor-block" id="downloadBlock" style="display:none">
-        <div class="download-ready">
-          <div class="download-icon">
-            <svg viewBox="0 0 24 24" width="32" height="32" stroke="#00b894" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          </div>
-          <p>書き出し完了！投稿可能な状態です</p>
-          <a class="btn-download" id="btnDownload" download>ダウンロード</a>
+    <!-- ファネル分析 -->
+    <div class="page" id="page-funnel">
+      <h1>CVRファネル分析</h1>
+      <div class="section-card">
+        <h2>Threads</h2>
+        <div class="funnel">
+          <div class="funnel-step" style="width:100%">imp: 10,000</div>
+          <div class="funnel-step" style="width:70%">プロフ訪問: 300 (3.0%)</div>
+          <div class="funnel-step" style="width:40%">Web遷移: 30 (10%)</div>
+          <div class="funnel-step" style="width:25%">記事読了: 15 (50%)</div>
+          <div class="funnel-step" style="width:15%">アフィクリック: 3 (20%)</div>
+          <div class="funnel-step" style="width:8%">成約: 1 (33%)</div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- 解析レポートセクション -->
-  <div class="container" id="reportSection" style="display:none; margin-top:24px;">
-    <div class="file-section">
-      <div class="file-section-header">
-        <h2>素材解析レポート</h2>
-        <button class="btn-analyze small" id="btnCloseReport">閉じる</button>
+    <!-- クライアント -->
+    <div class="page" id="page-clients">
+      <h1>クライアント管理</h1>
+      <div class="section-card">
+        <div id="clientList">読み込み中...</div>
       </div>
-      <div id="reportBody"></div>
     </div>
-  </div>
+
+    <!-- バズの型 -->
+    <div class="page" id="page-buzz">
+      <h1>バズ動画の型</h1>
+      <div class="section-card">
+        <h2>バズ動画URLから型を作る</h2>
+        <div class="form-row">
+          <label>バズ動画URL</label>
+          <input type="url" id="buzzUrl" class="input" placeholder="https://www.tiktok.com/...">
+        </div>
+        <div class="form-row">
+          <label>型の名前</label>
+          <input type="text" id="buzzName" class="input" placeholder="例: ビフォアフ王道">
+        </div>
+        <button class="btn-primary" id="btnAnalyzeBuzz">構成を分析</button>
+        <div id="buzzResult"></div>
+      </div>
+    </div>
+  </main>
 
   <script type="module" src="/src/main.js"></script>
 </body>
