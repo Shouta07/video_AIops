@@ -327,15 +327,30 @@ def build_optimized_video(path, hook_time, hook_text, hook_color, video_info, ma
     cta_escaped = cta_text.replace("'", "’").replace(":", "\\:")
 
     vf = (
+        # フック: グロー（背景光）レイヤー
         f"drawtext=text='{text_escaped}'"
-        f":fontfile='{font}':fontsize=68:fontcolor={color}"
+        f":fontfile='{font}'"
+        f":fontsize='if(lt(t,0.3),50+30*(t/0.3),80)'"
+        f":fontcolor={color}@0.3"
+        f":borderw=12:bordercolor={color}@0.15"
+        f":x=(w-tw)/2:y=h*0.45"
+        f":alpha='if(lt(t,0.4),t/0.4,if(gt(t,2),1-(t-2)/0.5,1))'"
+        f":enable='between(t,0,2.5)',"
+        # フック: メインテキスト（フェードイン + スケールアップ）
+        f"drawtext=text='{text_escaped}'"
+        f":fontfile='{font}'"
+        f":fontsize='if(lt(t,0.3),50+30*(t/0.3),80)'"
+        f":fontcolor={color}"
         f":borderw=5:bordercolor=black"
         f":x=(w-tw)/2:y=h*0.45"
+        f":alpha='if(lt(t,0.4),t/0.4,if(gt(t,2),1-(t-2)/0.5,1))'"
         f":enable='between(t,0,2.5)',"
+        # CTA: フェードイン
         f"drawtext=text='{cta_escaped}'"
         f":fontfile='{font}':fontsize=52:fontcolor=0xFFB6C1"
         f":borderw=4:bordercolor=black"
         f":x=(w-tw)/2:y=h*0.57"
+        f":alpha='if(lt(t-{final_dur - 3},0.5),(t-{final_dur - 3})/0.5,1)'"
         f":enable='between(t,{final_dur - 3},{final_dur})'"
     )
 
