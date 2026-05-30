@@ -284,6 +284,165 @@ ${data.render_note ? `※ ${data.render_note}` : ""}
   });
 }
 
+// ── 投稿プラン生成 ──
+const btnPlan = document.getElementById("btnGeneratePlan");
+if (btnPlan) {
+  btnPlan.addEventListener("click", async () => {
+    const genre = document.getElementById("planGenre").value;
+    const recycle = document.getElementById("planRecycle").checked;
+    btnPlan.disabled = true;
+    btnPlan.textContent = "生成中...";
+    const result = document.getElementById("planResult");
+    result.innerHTML = '<div class="result-block">素材を解析して投稿プランを生成中...（素材数により時間がかかります）</div>';
+
+    try {
+      const res = await fetch("/api/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ genre, recycle }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      const posts = (data.plan?.posts || []).map((p) => {
+        const clips = (p.clips || []).map((c) => `    - ${c.filename}（${c.start}〜${c.end}秒）`).join("\n");
+        const tags = (p.hashtags || []).join(" ");
+        return `■ 投稿${p.post_number}: ${p.title || ""}（${p.total_duration || "?"}秒）
+  コンセプト: ${p.concept || "—"}
+  クリップ:
+${clips || "    —"}
+  キャプション: ${p.post_caption || "—"}
+  ${tags ? "タグ: " + tags : ""}`;
+      }).join("\n\n");
+
+      const schedule = (data.plan?.schedule || []).map((s) =>
+        `  投稿${s.post_number}: ${s.day} ${s.time}（${s.reason || ""}）`
+      ).join("\n");
+
+      const recycleIdeas = (data.plan?.recycle_ideas || []).map((r) =>
+        `  ・${r.idea}（${(r.source_clips || []).join(", ")}）`
+      ).join("\n");
+
+      result.innerHTML = `<div class="result-block success">
+素材 ${(data.materials || []).length}本 → ${(data.plan?.posts || []).length}投稿プラン
+
+${posts}
+${schedule ? "\n── 投稿スケジュール ──\n" + schedule : ""}
+${recycleIdeas ? "\n── 素材リサイクル案 ──\n" + recycleIdeas : ""}
+</div>`;
+    } catch (err) {
+      result.innerHTML = `<div class="result-block error">${err.message}</div>`;
+    } finally {
+      btnPlan.disabled = false;
+      btnPlan.textContent = "投稿プランを生成";
+    }
+  });
+}
+
+// ── フック最適化 ──
+const btnHook = document.getElementById("btnOptimizeHook");
+if (btnHook) {
+  btnHook.addEventListener("click", async () => {
+    const theme = document.getElementById("hookTheme").value.trim();
+    const maxDur = document.getElementById("hookMaxDur").value;
+    btnHook.disabled = true;
+    btnHook.textContent = "生成中...";
+    const result = document.getElementById("hookResult");
+    result.innerHTML = '<div class="result-block">フックテロップ3案を生成中...</div>';
+
+    try {
+      const res = await fetch("/api/hook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme, max_duration: Number(maxDur) }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      const hooks = (data.hooks || []).map((h, i) => {
+        const label = { A_result: "A 結果先出し型", B_question: "B 疑問・煽り型", C_empathy: "C 共感型" }[h.type] || `案${i + 1}`;
+        return `[${label}]
+  テロップ: 「${h.text}」（色: ${h.color || "white"}）
+  ${h.why ? "狙い: " + h.why : ""}`;
+      }).join("\n\n");
+
+      result.innerHTML = `<div class="result-block success">
+テーマ: ${data.theme || theme} / 最大尺: ${data.max_duration || maxDur}秒
+
+${hooks}
+</div>`;
+    } catch (err) {
+      result.innerHTML = `<div class="result-block error">${err.message}</div>`;
+    } finally {
+      btnHook.disabled = false;
+      btnHook.textContent = "フック最適化を実行";
+    }
+  });
+}
+
+// ── バズの型を分析 ──
+const btnBuzz = document.getElementById("btnAnalyzeBuzz");
+if (btnBuzz) {
+  btnBuzz.addEventListener("click", async () => {
+    const url = document.getElementById("buzzUrl").value.trim();
+    const name = document.getElementById("buzzName").value.trim();
+    if (!url || !name) return;
+    btnBuzz.disabled = true;
+    btnBuzz.textContent = "分析中...";
+    const result = document.getElementById("buzzResult");
+    result.innerHTML = '<div class="result-block">動画をダウンロードして構成を分析中...（30秒〜1分）</div>';
+
+    try {
+      const res = await fetch("/api/buzz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, name }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      const t = data.template || {};
+      const structure = (t.structure || []).map((p) =>
+        `  ${p.part_name}（${p.duration_sec || "?"}秒・${p.role || ""}）
+    テロップ方針: ${p.telop_guide || "—"}
+    カメラ: ${p.camera_guide || "—"}`
+      ).join("\n\n");
+
+      result.innerHTML = `<div class="result-block success">
+型: ${t.template_name || name}
+目標尺: ${t.total_duration || "?"}秒
+
+── 構成 ──
+${structure || "—"}
+
+効く理由: ${t.why_it_works || "—"}
+フック: ${t.hook_pattern || "—"}
+CTA: ${t.cta_pattern || "—"}
+
+保存先: ${data.path || "—"}
+</div>`;
+      loadTemplates();
+    } catch (err) {
+      result.innerHTML = `<div class="result-block error">${err.message}</div>`;
+    } finally {
+      btnBuzz.disabled = false;
+      btnBuzz.textContent = "構成を分析";
+    }
+  });
+}
+
+// ── Templates (バズの型) stat ──
+async function loadTemplates() {
+  try {
+    const res = await fetch("/api/templates");
+    const data = await res.json();
+    const el = document.getElementById("stat-templates");
+    if (el) el.textContent = (data.templates || []).length;
+  } catch {
+    // API unavailable
+  }
+}
+
 // ── Helpers ──
 function esc(str) {
   const div = document.createElement("div");
@@ -295,4 +454,5 @@ function esc(str) {
 loadFiles();
 loadOutputs();
 loadClients();
+loadTemplates();
 renderHypotheses();

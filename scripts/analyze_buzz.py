@@ -320,11 +320,58 @@ def main():
         description="バズ動画の構成を抽象化 → テンプレートとして保存",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("urls", nargs="+", help="バズ動画のURL（複数指定で共通パターン抽出）")
-    parser.add_argument("--name", required=True, help="テンプレートの名前（例: ビフォアフ王道）")
+    parser.add_argument("urls", nargs="*", help="バズ動画のURL（複数指定で共通パターン抽出）")
+    parser.add_argument("--name", help="テンプレートの名前（例: ビフォアフ王道）")
     parser.add_argument("--client", help="クライアントID")
     parser.add_argument("--keep-video", action="store_true", help="DLした動画を残す")
+    parser.add_argument("--json", action="store_true", help="結果をJSONで標準出力（Web API用）")
+    parser.add_argument("--list", action="store_true", help="保存済みテンプレートをJSONで一覧")
     args = parser.parse_args()
+
+    # テンプレート一覧モード（Web API用）
+    if args.list:
+        print(json.dumps({"templates": list_templates(args.client)}, ensure_ascii=False))
+        return
+
+    if not args.urls:
+        print("❌ バズ動画のURLを指定してください", file=sys.stderr)
+        sys.exit(1)
+    if not args.name:
+        print("❌ --name でテンプレート名を指定してください", file=sys.stderr)
+        sys.exit(1)
+
+    # JSONモード（Web API用）: 解析→テンプレート生成し、JSONを返す
+    if args.json:
+        import contextlib
+        payload = {}
+        with contextlib.redirect_stdout(sys.stderr):
+            work_dir = tempfile.mkdtemp(prefix="buzz_")
+            templates = []
+            for url in args.urls:
+                video_path = download_video(url, work_dir)
+                if not video_path:
+                    continue
+                video_info = analyze_video(video_path)
+                transcript = transcribe_video(video_path)
+                template = abstract_structure_single(video_info, transcript, url)
+                if template:
+                    template["source_url"] = url
+                    templates.append(template)
+                if not args.keep_video and os.path.exists(video_path):
+                    os.remove(video_path)
+            if not templates:
+                payload = {"error": "テンプレートを生成できませんでした（ダウンロード失敗 or APIキー未設定）"}
+            else:
+                final_template = templates[0]
+                if len(templates) > 1:
+                    merged = merge_templates(templates)
+                    if merged:
+                        merged["source_urls"] = [t.get("source_url", "") for t in templates]
+                        final_template = merged
+                filepath = save_template(final_template, args.name, args.client)
+                payload = {"template": final_template, "path": filepath}
+        print(json.dumps(payload, ensure_ascii=False))
+        return
 
     print("=" * 55)
     print("  Video AIops - バズ動画構成アナライザー")

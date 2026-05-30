@@ -634,6 +634,8 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="プラン確認のみ（動画生成しない）")
     parser.add_argument("--recycle", action="store_true", help="素材リサイクル提案も生成")
     parser.add_argument("--plan-json", help="既存のプランJSONから動画を生成（プラン修正後の再実行用）")
+    parser.add_argument("--json", action="store_true",
+                        help="プランのみJSONで標準出力（Web API用。動画生成なし）")
     args = parser.parse_args()
 
     # クライアントモード: パスとプロフィールを自動設定
@@ -650,6 +652,32 @@ def main():
             print(f"  ⚠️  クライアント {args.client} のプロフィールが見つかりません。")
             print(f"  python ops.py でクライアントを登録してください。")
             sys.exit(1)
+
+    # JSONモード（Web API用）: 解析→プラン生成のみ、動画は作らずJSONを返す
+    if args.json:
+        import contextlib
+        payload = {}
+        with contextlib.redirect_stdout(sys.stderr):
+            videos = find_videos(args.input_dir)
+            if not videos:
+                payload = {"error": f"{args.input_dir}/ に動画が見つかりません。素材をアップロードしてください。"}
+            else:
+                catalog = analyze_all(videos)
+                buzz_template = None
+                if args.template and os.path.exists(args.template):
+                    with open(args.template, encoding="utf-8") as f:
+                        buzz_template = json.load(f)
+                plan = generate_post_plan(catalog, args.genre, recycle=args.recycle,
+                                          profile=client_profile, template=buzz_template)
+                materials = [{
+                    "filename": c["filename"],
+                    "duration": c.get("duration", 0),
+                    "has_audio": c.get("has_audio", False),
+                    "error": bool(c.get("error")),
+                } for c in catalog]
+                payload = {"plan": plan, "materials": materials, "genre": args.genre}
+        print(json.dumps(payload, ensure_ascii=False))
+        return
 
     print("=" * 55)
     print("  Video AIops - 投稿プランナー")

@@ -525,6 +525,66 @@ app.get("/api/clients", async (req, res) => {
   }
 });
 
+// ── 投稿プラン生成（scripts/planner.py、アップロード素材をプランのみ生成） ──
+app.post("/api/plan", async (req, res) => {
+  const { genre = "beauty", recycle = false, client } = req.body || {};
+  const args = ["scripts/planner.py", "--input-dir", UPLOAD_DIR, "--genre", genre, "--json"];
+  if (recycle) args.push("--recycle");
+  if (client) args.push("--client", client);
+  try {
+    const data = await runPythonJson(args, { timeout: 600000 });
+    if (data.error) return res.status(400).json(data);
+    res.json(data);
+  } catch (err) {
+    console.error("Plan error:", err.message);
+    res.status(500).json({ error: "投稿プラン生成に失敗しました: " + err.message });
+  }
+});
+
+// ── フック最適化（scripts/hook_optimizer.py、フックテロップ3案を生成） ──
+app.post("/api/hook", async (req, res) => {
+  const { theme = "", genre = "beauty", max_duration = 20, filename, client } = req.body || {};
+  const args = ["scripts/hook_optimizer.py"];
+  if (filename) args.push(path.join(UPLOAD_DIR, path.basename(filename)));
+  args.push("--theme", theme, "--genre", genre, "--max-duration", String(max_duration), "--json");
+  if (client) args.push("--client", client);
+  try {
+    const data = await runPythonJson(args, { timeout: 300000 });
+    res.json(data);
+  } catch (err) {
+    console.error("Hook error:", err.message);
+    res.status(500).json({ error: "フック最適化に失敗しました: " + err.message });
+  }
+});
+
+// ── バズ動画の型を分析（scripts/analyze_buzz.py） ──
+app.post("/api/buzz", async (req, res) => {
+  const { url, name, client } = req.body || {};
+  if (!url || !url.trim()) return res.status(400).json({ error: "バズ動画URLを入力してください" });
+  if (!name || !name.trim()) return res.status(400).json({ error: "型の名前を入力してください" });
+  const args = ["scripts/analyze_buzz.py", url.trim(), "--name", name.trim(), "--json"];
+  if (client) args.push("--client", client);
+  try {
+    const data = await runPythonJson(args, { timeout: 300000 });
+    if (data.error) return res.status(400).json(data);
+    res.json(data);
+  } catch (err) {
+    console.error("Buzz error:", err.message);
+    res.status(500).json({ error: "バズ分析に失敗しました: " + err.message });
+  }
+});
+
+// ── バズの型 一覧（scripts/analyze_buzz.py --list） ──
+app.get("/api/templates", async (req, res) => {
+  try {
+    const data = await runPythonJson(["scripts/analyze_buzz.py", "--list"], { timeout: 30000 });
+    res.json(data);
+  } catch (err) {
+    console.error("Templates error:", err.message);
+    res.json({ templates: [] });
+  }
+});
+
 // ── SPA fallback ──
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"));

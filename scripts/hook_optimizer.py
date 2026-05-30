@@ -380,13 +380,42 @@ def main():
     parser = argparse.ArgumentParser(
         description="フック最適化 - 冒頭2秒の離脱を防ぐ動画を自動生成",
     )
-    parser.add_argument("input", help="入力動画ファイル")
+    parser.add_argument("input", nargs="?", help="入力動画ファイル")
     parser.add_argument("--theme", default="", help="動画のテーマ")
     parser.add_argument("--genre", default="beauty", help="ジャンル")
     parser.add_argument("--client", help="クライアントID")
     parser.add_argument("--max-duration", type=int, default=20, help="最大尺（秒）デフォルト20")
     parser.add_argument("--cta", default="フォローで見届けて", help="CTA文言")
+    parser.add_argument("--json", action="store_true",
+                        help="フックテロップ3案のみJSONで標準出力（Web API用。動画生成なし）")
     args = parser.parse_args()
+
+    # クライアントプロフィール（JSONモードでも使う）
+    cli_profile = None
+    if args.client:
+        cli_profile_path = os.path.join("clients", args.client, "profile.json")
+        if os.path.exists(cli_profile_path):
+            with open(cli_profile_path, encoding="utf-8") as f:
+                cli_profile = json.load(f)
+
+    # JSONモード（Web API用）: フックテロップ3案を生成して返す（動画なしでも可）
+    if args.json:
+        import contextlib
+        with contextlib.redirect_stdout(sys.stderr):
+            transcript = ""
+            if args.input and os.path.exists(args.input):
+                transcript = transcribe(args.input)
+            hooks = generate_hooks(transcript, args.theme, args.genre, cli_profile)
+        print(json.dumps({
+            "hooks": hooks[:3],
+            "theme": args.theme,
+            "max_duration": args.max_duration,
+        }, ensure_ascii=False))
+        return
+
+    if not args.input:
+        print("❌ 入力動画ファイルを指定してください")
+        sys.exit(1)
 
     if not os.path.exists(args.input):
         print(f"❌ ファイルが見つかりません: {args.input}")

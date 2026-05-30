@@ -7,6 +7,7 @@ clients/*/output/
 clients/*/reports/*.json
 clients/*/reports/*.txt
 clients/*/templates/
+templates/
 captions/
 
 # アカウント情報
