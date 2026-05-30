@@ -113,6 +113,60 @@ async function loadFiles() {
   }
 }
 
+// ── Outputs (完成動画) ──
+async function loadOutputs() {
+  try {
+    const res = await fetch("/api/outputs");
+    const data = await res.json();
+    const el = document.getElementById("stat-outputs");
+    if (el) el.textContent = (data.files || []).length;
+  } catch {
+    // API unavailable
+  }
+}
+
+// ── Clients ──
+const GENRE_LABELS = {
+  beauty: "美容・コスメ", food: "料理・グルメ", travel: "旅行・Vlog",
+  fitness: "筋トレ", business: "ビジネス", lifestyle: "ライフスタイル",
+  education: "教育・解説", product: "商品紹介",
+};
+
+async function loadClients() {
+  try {
+    const res = await fetch("/api/clients");
+    const data = await res.json();
+    const clients = data.clients || [];
+
+    const stat = document.getElementById("stat-clients");
+    if (stat) stat.textContent = clients.length;
+
+    const list = document.getElementById("clientList");
+    if (!list) return;
+    if (!clients.length) {
+      list.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">クライアントが登録されていません。<br>CLI: <code>python scripts/client.py create</code></p>';
+      return;
+    }
+    list.innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>ID</th><th>名前</th><th>ジャンル</th><th>素材</th></tr></thead>
+        <tbody>
+          ${clients.map((c) => `
+            <tr>
+              <td>${esc(c.id)}</td>
+              <td><strong>${esc(c.name)}</strong></td>
+              <td>${esc(GENRE_LABELS[c.genre] || c.genre || "—")}</td>
+              <td>${c.video_count}本</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>`;
+  } catch {
+    const list = document.getElementById("clientList");
+    if (list) list.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">読み込みに失敗しました</p>';
+  }
+}
+
 // ── Hypothesis Board ──
 const hypotheses = [
   { id: "hygiene", name: "清潔感", insight: "清潔感は顔じゃなくて手入れで決まる", keywords: "清潔感, 手入れ, 身だしなみ" },
@@ -219,6 +273,7 @@ BGM: ${data.mood || "—"}
 ビジュアル: ${data.visual_note || "—"}
 
 ${data.output ? `出力: ${data.output}` : ""}
+${data.render_note ? `※ ${data.render_note}` : ""}
 </div>`;
     } catch (err) {
       result.innerHTML = `<div class="result-block error">${err.message}</div>`;
@@ -238,4 +293,6 @@ function esc(str) {
 
 // ── Init ──
 loadFiles();
+loadOutputs();
+loadClients();
 renderHypotheses();

@@ -81,13 +81,13 @@ def generate_script(hypothesis_id, reel_type):
     """GPT/Geminiでスクリプトを生成"""
     hyp = HYPOTHESES.get(hypothesis_id)
     if not hyp:
-        print(f"  ❌ 仮説が見つかりません: {hypothesis_id}")
-        print(f"  使える仮説: {', '.join(HYPOTHESES.keys())}")
+        print(f"  ❌ 仮説が見つかりません: {hypothesis_id}", file=sys.stderr)
+        print(f"  使える仮説: {', '.join(HYPOTHESES.keys())}", file=sys.stderr)
         return None
 
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        print("  ⚠️  OPENAI_API_KEY 未設定。テンプレートスクリプトを生成します。")
+        print("  ⚠️  OPENAI_API_KEY 未設定。テンプレートスクリプトを生成します。", file=sys.stderr)
         return generate_fallback(hypothesis_id, reel_type, hyp)
 
     from openai import OpenAI
@@ -150,7 +150,7 @@ JSONのみ出力。"""
         script["hypothesis"] = hypothesis_id
         return script
     except Exception as e:
-        print(f"  ⚠️  APIエラー: {e}")
+        print(f"  ⚠️  APIエラー: {e}", file=sys.stderr)
         return generate_fallback(hypothesis_id, reel_type, hyp)
 
 
@@ -199,7 +199,20 @@ def main():
     parser.add_argument("--type", choices=list(REEL_TYPES.keys()), help="リール型")
     parser.add_argument("--batch", action="store_true", help="全タイプを一括生成")
     parser.add_argument("--list", action="store_true", help="仮説・リール型の一覧")
+    parser.add_argument("--json", action="store_true",
+                        help="JSONのみ標準出力（Web API用。保存なし）")
     args = parser.parse_args()
+
+    if args.json:
+        if not args.hypothesis:
+            print(json.dumps({"error": "hypothesis required"}))
+            sys.exit(1)
+        script = generate_script(args.hypothesis, args.type or "card")
+        if script is None:
+            print(json.dumps({"error": f"unknown hypothesis: {args.hypothesis}"}))
+            sys.exit(1)
+        print(json.dumps(script, ensure_ascii=False))
+        return
 
     if args.list:
         print("\n  ── 仮説一覧 ──")

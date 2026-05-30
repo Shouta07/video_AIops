@@ -158,7 +158,7 @@ JSONのみ出力。"""
         )
         return json.loads(response.choices[0].message.content)
     except Exception as e:
-        print(f"  ⚠️  GPTエラー: {e}")
+        print(f"  ⚠️  GPTエラー: {e}", file=sys.stderr)
         return generate_script_fallback(theme, style)
 
 
@@ -231,6 +231,8 @@ def main():
                         help="台本スタイル（デフォルト: beforeafter）")
     parser.add_argument("--client", help="クライアントID")
     parser.add_argument("--list", action="store_true", help="スタイル一覧を表示")
+    parser.add_argument("--json", action="store_true",
+                        help="JSONのみ標準出力（Web API用。保存・整形なし）")
     args = parser.parse_args()
 
     if args.list:
@@ -253,6 +255,12 @@ def main():
         if os.path.exists(profile_path):
             with open(profile_path, encoding="utf-8") as f:
                 profile = json.load(f)
+
+    # JSONモード（Web API用）: 標準出力にJSONのみ出して終了
+    if args.json:
+        script = generate_script_ai(args.theme, style, profile)
+        print(json.dumps(script, ensure_ascii=False))
+        return
 
     print(f"\n  テーマ: {args.theme}")
     print(f"  スタイル: {style['name']}（{style['duration']}秒）")

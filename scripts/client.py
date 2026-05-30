@@ -269,13 +269,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="クライアント管理")
     parser.add_argument("action", choices=["create", "list", "show", "edit"], help="操作")
     parser.add_argument("--id", help="クライアントID")
+    parser.add_argument("--json", action="store_true", help="JSONで出力（Web API用）")
     args = parser.parse_args()
 
     if args.action == "create":
         create_client_interactive()
     elif args.action == "list":
         clients = list_clients()
-        if not clients:
+        if args.json:
+            print(json.dumps({"clients": clients}, ensure_ascii=False))
+        elif not clients:
             print("  登録済みクライアントはありません。")
         else:
             print(f"\n  ── クライアント一覧 ──\n")

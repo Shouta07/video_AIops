@@ -24,6 +24,9 @@ dist/
 venv/
 uploads/
 .vercel/
+__pycache__/
+*.pyc
+instagram/output/
 
 # OS
 .DS_Store

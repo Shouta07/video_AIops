@@ -15,14 +15,46 @@ const PORT = process.env.PORT || 3000;
 // ── Directories ──
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 const OUTPUT_DIR = path.join(__dirname, "output");
+const REEL_DIR = path.join(__dirname, "instagram", "output");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+
+// ── Python resolver (venv 優先、なければシステム python3) ──
+function resolvePython() {
+  const venvPython = path.join(__dirname, "venv", "bin", "python3");
+  const venvPythonWin = path.join(__dirname, "venv", "Scripts", "python.exe");
+  if (fs.existsSync(venvPython)) return venvPython;
+  if (fs.existsSync(venvPythonWin)) return venvPythonWin;
+  return process.platform === "win32" ? "python" : "python3";
+}
+
+// Python スクリプトを実行し stdout の JSON を返す
+function runPythonJson(args, { timeout = 120000 } = {}) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      resolvePython(),
+      args,
+      { cwd: __dirname, maxBuffer: 20 * 1024 * 1024, timeout },
+      (error, stdout, stderr) => {
+        if (error && !stdout) {
+          return reject(new Error((stderr || error.message).trim()));
+        }
+        try {
+          resolve(JSON.parse(stdout.trim()));
+        } catch {
+          reject(new Error("Python 出力の解析に失敗しました: " + (stderr || stdout).slice(0, 300)));
+        }
+      }
+    );
+  });
+}
 
 // ── Middleware ──
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use("/uploads", express.static(UPLOAD_DIR));
 app.use("/output", express.static(OUTPUT_DIR));
+app.use("/reels", express.static(REEL_DIR));
 
 // Serve frontend (Vite build output)
 app.use(express.static(path.join(__dirname, "dist")));
@@ -408,6 +440,88 @@ app.get("/api/outputs", (req, res) => {
     res.json({ files });
   } catch {
     res.json({ files: [] });
+  }
+});
+
+// ── 台本生成（scripts/script.py） ──
+app.post("/api/script", async (req, res) => {
+  const { theme, style = "beforeafter", client } = req.body || {};
+  if (!theme || !theme.trim()) {
+    return res.status(400).json({ error: "テーマを入力してください" });
+  }
+  const args = ["scripts/script.py", "--theme", theme.trim(), "--style", style, "--json"];
+  if (client) args.push("--client", client);
+  try {
+    const script = await runPythonJson(args, { timeout: 120000 });
+    res.json(script);
+  } catch (err) {
+    console.error("Script error:", err.message);
+    res.status(500).json({ error: "台本生成に失敗しました: " + err.message });
+  }
+});
+
+// ── リール生成（instagram/script_writer.py → reel_editor.py） ──
+app.post("/api/reel", async (req, res) => {
+  const { hypothesis, type = "card" } = req.body || {};
+  if (!hypothesis) {
+    return res.status(400).json({ error: "仮説を選択してください" });
+  }
+
+  let script;
+  try {
+    script = await runPythonJson(
+      ["instagram/script_writer.py", "--hypothesis", hypothesis, "--type", type, "--json"],
+      { timeout: 120000 }
+    );
+    if (script.error) throw new Error(script.error);
+  } catch (err) {
+    console.error("Reel script error:", err.message);
+    return res.status(500).json({ error: "スクリプト生成に失敗しました: " + err.message });
+  }
+
+  // スクリプトから動画レンダリングを試みる（Pillow/ffmpeg が必要。失敗してもスクリプトは返す）
+  const scriptFile = path.join(REEL_DIR, `_api_script_${Date.now()}.json`);
+  try {
+    fs.mkdirSync(REEL_DIR, { recursive: true });
+    fs.writeFileSync(scriptFile, JSON.stringify(script), "utf-8");
+    const before = new Set(fs.existsSync(REEL_DIR) ? fs.readdirSync(REEL_DIR) : []);
+
+    await new Promise((resolve, reject) => {
+      execFile(
+        resolvePython(),
+        ["instagram/reel_editor.py", "--script", scriptFile],
+        { cwd: __dirname, maxBuffer: 20 * 1024 * 1024, timeout: 300000 },
+        (error, stdout, stderr) => (error ? reject(new Error(stderr || error.message)) : resolve(stdout))
+      );
+    });
+
+    const produced = fs.readdirSync(REEL_DIR)
+      .filter((f) => f.endsWith(".mp4") && !before.has(f))
+      .map((f) => ({ f, m: fs.statSync(path.join(REEL_DIR, f)).mtimeMs }))
+      .sort((a, b) => b.m - a.m)[0];
+
+    if (produced) {
+      script.output = `/reels/${produced.f}`;
+    }
+  } catch (err) {
+    // レンダリング環境（Pillow 等）が無い場合はスクリプトのみ返す
+    console.warn("Reel render skipped:", err.message.split("\n")[0]);
+    script.render_note = "動画レンダリングはスキップされました（Pillow/ffmpeg 未導入）。スクリプトのみ生成しました。";
+  } finally {
+    if (fs.existsSync(scriptFile)) fs.unlinkSync(scriptFile);
+  }
+
+  res.json(script);
+});
+
+// ── クライアント一覧（scripts/client.py） ──
+app.get("/api/clients", async (req, res) => {
+  try {
+    const data = await runPythonJson(["scripts/client.py", "list", "--json"], { timeout: 30000 });
+    res.json(data);
+  } catch (err) {
+    console.error("Clients error:", err.message);
+    res.json({ clients: [] });
   }
 });
 
