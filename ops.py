@@ -403,6 +403,52 @@ def menu_script():
     pause()
 
 
+# ─── メニュー 8: フック最適化 ───
+
+def menu_hook():
+    clear()
+    header()
+    client_id = select_client()
+    if not client_id:
+        return
+
+    from scripts.client import load_profile
+    profile = load_profile(client_id)
+    input_dir = f"clients/{client_id}/input"
+
+    # 素材選択
+    exts = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"}
+    videos = []
+    if os.path.exists(input_dir):
+        videos = sorted([f for f in os.listdir(input_dir) if os.path.splitext(f)[1].lower() in exts])
+
+    if not videos:
+        print(f"\n  ❌ 素材がありません。clients/{client_id}/input/ に動画を入れてください。")
+        pause()
+        return
+
+    video_options = [(v, os.path.join(input_dir, v)) for v in videos]
+    video_path = menu_select("最適化する動画を選択:", video_options)
+    if not video_path:
+        return
+
+    theme = input("\n  テーマ（例: 眉アート体験）: ").strip()
+    max_dur = input("  最大尺（秒。デフォルト20）: ").strip()
+    max_dur = int(max_dur) if max_dur else 20
+
+    cmd = [
+        sys.executable, "scripts/hook_optimizer.py",
+        video_path,
+        "--client", client_id,
+        "--genre", profile["genre"],
+        "--max-duration", str(max_dur),
+    ]
+    if theme:
+        cmd += ["--theme", theme]
+    subprocess.run(cmd)
+    pause()
+
+
 # ─── メインメニュー ───
 
 def main():
@@ -411,6 +457,7 @@ def main():
         header()
         action = menu_select("メインメニュー", [
             ("クイック実行（素材 → 投稿プラン → 動画生成）", "quick"),
+            ("フック最適化（A/Bテスト用3バージョン生成）", "hook"),
             ("台本を作成（テーマ入力 → 台本生成）", "script"),
             ("バズ動画の型（URL分析 / 型で投稿生成）", "buzz"),
             ("投稿プラン（確認・修正・再生成）", "plan"),
@@ -424,6 +471,8 @@ def main():
             break
         elif action == "quick":
             menu_quick()
+        elif action == "hook":
+            menu_hook()
         elif action == "script":
             menu_script()
         elif action == "buzz":
